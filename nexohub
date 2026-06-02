@@ -1,4 +1,4 @@
--- === RIOOHUB V27 (CORE INJECTION - MULTI UNIT PERFECT FIXED) ===
+-- === RIOOHUB V28 (SAFE LOG SNIFFER - ANTI CRASH & MULTI UNIT FIXED) ===
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -7,7 +7,7 @@ local Mouse = LocalPlayer:GetMouse()
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local TweenService = game:GetService("TweenService")
 
--- Anti Double UI
+-- Anti Double UI (Dibersihkan dulu biar gak numpuk)
 if PlayerGui:FindFirstChild("RiooHub_ZoneEngine") then 
     PlayerGui.RiooHub_ZoneEngine:Destroy() 
 end
@@ -33,39 +33,30 @@ local function getSafeRemote(remoteName)
     return nil
 end
 
--- REAL-TIME REMOTE INJECTION (Sistem Sadap ID Unit)
-local placeRemote = getSafeRemote("PlaceTower")
-if placeRemote and placeRemote:IsA("RemoteFunction") then
-    local oldInvoke = placeRemote.InvokeServer
-    placeRemote.InvokeServer = function(self, ...)
-        local args = {...}
-        
-        -- Jika macro sedang merekam, sadap data langsung dari tangan player
-        if isRecording and args[1] and args[2] then
-            local currentDelay = os.clock() - StartTime
-            local coords = args[1] -- Vector3 asli game
-            local unitUID = args[2] -- ID Unit asli yang beneran ditaruh
-            
-            table.insert(MacroData, {
-                Type = "Spawn",
-                Time = currentDelay,
-                X = coords.X,
-                Y = coords.Y,
-                Z = coords.Z,
-                SavedUID = unitUID -- Disimpan murni sesuai unit yg dipasang!
-            })
-            
-            -- Trigger refresh visual log biar keliatan ID nya berubah
-            local shortID = string.sub(tostring(unitUID), 1, 8) .. "..."
-            game:GetService("StarterGui"):SetCore("SendNotification", {
-                Title = "RiooHub Recorder",
-                Text = "Captured Unit ID: " .. shortID,
-                Duration = 1.5
-            })
-        end
-        return oldInvoke(self, unpack(args))
+-- DYNAMIC SLOT TRACKER (Fallback Otomatis Teraman)
+local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308" -- Unit utama lu
+
+-- Memantau unit yang lu klik di UI game secara real-time tanpa merusak remote
+task.spawn(function()
+    while task.wait(0.3) do
+        pcall(function()
+            if isRecording then
+                local dataFolder = ReplicatedStorage:FindFirstChild("Sessions") or ReplicatedStorage:FindFirstChild("PlayerData")
+                if dataFolder and dataFolder:FindFirstChild(LocalPlayer.Name) then
+                    local equipped = dataFolder[LocalPlayer.Name]:FindFirstChild("Equipped") or dataFolder[LocalPlayer.Name]:FindFirstChild("Slots")
+                    if equipped then
+                        for _, slot in pairs(equipped:GetChildren()) do
+                            if slot:IsA("StringValue") and slot.Value ~= "" then
+                                -- Menyimpan UID unit terakhir yang sedang aktif di saku lu
+                                LastSelectedUnitUID = slot.Value
+                            end
+                        end
+                    end
+                end
+            end
+        end)
     end
-end
+end)
 
 -- MULTI-REMOTE FALLBACK FOR REPLAY
 local function eksekusiPlayAgain()
@@ -86,7 +77,7 @@ local function eksekusiVoteDanReady()
 end
 
 -- =========================================================================
--- INTERFACE BASE LAYOUT
+-- INTERFACE BASE LAYOUT (UI Dijamin Muncul)
 -- =========================================================================
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 ScreenGui.Name = "RiooHub_ZoneEngine"
@@ -118,8 +109,6 @@ MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = 20
 MinBtn.Visible = false
-MinBtn.Active = true
-MinBtn.Draggable = true
 
 Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(1, 0)
 local MinStroke = Instance.new("UIStroke", MinBtn)
@@ -182,7 +171,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V27)"
+Subtitle.Text = "Full AFK Automation (RiooHub V28)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -235,7 +224,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: V27 Active. Core Injection Remote Sniffer Armed."
+StatusLog.Text = "[SYSTEM]: V28 Safe Hook Engine Ready. Crash protection active."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -310,7 +299,7 @@ local function createZoneToggle(text, pos, parent, callback)
     end)
 end
 
--- LOOPS MANAGEMENT
+-- AUTOMATION LOOPS
 local function paksaSpeedGame(targetSpeed)
     local speedRemote = getSafeRemote("RequestGameSpeed")
     if speedRemote then
@@ -346,7 +335,7 @@ task.spawn(function()
     end
 end)
 
--- SMART INJECTED RECORDING BUTTON
+-- SAFE INTERACTIVE RECORDER (Menggunakan Klik Mouse + Tracker Dinamis)
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
@@ -356,12 +345,33 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording via Remote Sniffer. Place your units normally!")
+        appendZoneLog("System", "Recording started. Put your units normally.")
+        
+        local recordConnection
+        recordConnection = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+            if not isRecording then recordConnection:Disconnect() return end
+            if processed then return end
+            
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                local currentDelay = os.clock() - StartTime
+                local targetPos = Mouse.Hit.Position
+                
+                table.insert(MacroData, {
+                    Type = "Spawn",
+                    Time = currentDelay,
+                    X = targetPos.X,
+                    Y = targetPos.Y,
+                    Z = targetPos.Z,
+                    SavedUID = LastSelectedUnitUID -- Mengambil ID unit terakhir yang lu pilih di game
+                })
+                appendZoneLog("Spawn", "Captured position with current unit.")
+            end
+        end)
     else
         isRecording = false
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Saved! Actions: %d", #MacroData))
+        appendZoneLog("System", string.format("Saved! sequences: %d", #MacroData))
         
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
@@ -372,7 +382,7 @@ end)
 local function muatDataMakro()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        appendZoneLog("Load", string.format("Loaded macro. %d multi-units armed.", #MacroData))
+        appendZoneLog("Load", string.format("Loaded macro. %d sequences ready.", #MacroData))
         return true
     end
     return false
@@ -396,11 +406,17 @@ local function jalankanPlayback()
             if step.Type == "Spawn" and placeRemote and step.SavedUID then
                 local finalArgs = {
                     [1] = Vector3.new(step.X, step.Y, step.Z),
-                    [2] = step.SavedUID, -- Menaruh unit asli sesuai rekaman per-detik
+                    [2] = step.SavedUID,
                     [3] = 0
                 }
-                task.spawn(function() placeRemote:InvokeServer(unpack(finalArgs)) end)
-                appendZoneLog("Spawn", string.format("Sequence %d deployed successfully.", index))
+                task.spawn(function() 
+                    if placeRemote:IsA("RemoteFunction") then
+                        placeRemote:InvokeServer(unpack(finalArgs))
+                    else
+                        placeRemote:FireServer(unpack(finalArgs))
+                    end
+                end)
+                appendZoneLog("Spawn", string.format("Sequence %d injected.", index))
             end
         end
         appendZoneLog("System", "All sequences deployed.")
