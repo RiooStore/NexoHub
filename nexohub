@@ -1,15 +1,25 @@
--- === RIOOHUB V28 (SAFE LOG SNIFFER - ANTI CRASH & MULTI UNIT FIXED) ===
+-- === RIOOHUB V29 (ULTRA DEFEND CORE - COREGUI FALLBACK & ANTI CRASH) ===
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+-- WAITING ENGINE (Memastikan game sudah siap 100%)
+if not Players.LocalPlayer then
+    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+end
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
-local TweenService = game:GetService("TweenService")
 
--- Anti Double UI (Dibersihkan dulu biar gak numpuk)
-if PlayerGui:FindFirstChild("RiooHub_ZoneEngine") then 
-    PlayerGui.RiooHub_ZoneEngine:Destroy() 
+-- Penentuan lokasi UI paling aman (Prioritas CoreGui biar anti-bug/anti-reset)
+local TargetGuiParent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+if PlayerGui then TargetGuiParent = PlayerGui end
+
+-- Anti Double UI
+if TargetGuiParent:FindFirstChild("RiooHub_ZoneEngine") then 
+    TargetGuiParent.RiooHub_ZoneEngine:Destroy() 
 end
 
 -- Core Config & States
@@ -24,6 +34,9 @@ local autoSkipEnabled = false
 local autoVoteReadyEnabled = false
 local targetDifficulty = "Easy"
 
+-- Fallback UID Unit Utama
+local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
+
 -- SAFE REMOTE MANAGER
 local function getSafeRemote(remoteName)
     local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes")
@@ -33,32 +46,28 @@ local function getSafeRemote(remoteName)
     return nil
 end
 
--- DYNAMIC SLOT TRACKER (Fallback Otomatis Teraman)
-local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308" -- Unit utama lu
-
--- Memantau unit yang lu klik di UI game secara real-time tanpa merusak remote
+-- TRACKER SLOT UNIT (Menggunakan sistem pengaman pcall penuh)
 task.spawn(function()
-    while task.wait(0.3) do
-        pcall(function()
-            if isRecording then
+    while task.wait(0.5) do
+        if isRecording then
+            pcall(function()
                 local dataFolder = ReplicatedStorage:FindFirstChild("Sessions") or ReplicatedStorage:FindFirstChild("PlayerData")
                 if dataFolder and dataFolder:FindFirstChild(LocalPlayer.Name) then
                     local equipped = dataFolder[LocalPlayer.Name]:FindFirstChild("Equipped") or dataFolder[LocalPlayer.Name]:FindFirstChild("Slots")
                     if equipped then
                         for _, slot in pairs(equipped:GetChildren()) do
                             if slot:IsA("StringValue") and slot.Value ~= "" then
-                                -- Menyimpan UID unit terakhir yang sedang aktif di saku lu
                                 LastSelectedUnitUID = slot.Value
                             end
                         end
                     end
                 end
-            end
-        end)
+            end)
+        end
     end
 end)
 
--- MULTI-REMOTE FALLBACK FOR REPLAY
+-- REPLAY REMOTE ENGINE
 local function eksekusiPlayAgain()
     local replayRemote = getSafeRemote("PlayAgain") or getSafeRemote("Replay") or getSafeRemote("Retry")
     if replayRemote then
@@ -77,9 +86,9 @@ local function eksekusiVoteDanReady()
 end
 
 -- =========================================================================
--- INTERFACE BASE LAYOUT (UI Dijamin Muncul)
+-- INTERFACE LAYOUT (SISTEM CORNERING AMAN)
 -- =========================================================================
-local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+local ScreenGui = Instance.new("ScreenGui", TargetGuiParent)
 ScreenGui.Name = "RiooHub_ZoneEngine"
 ScreenGui.ResetOnSpawn = false
 
@@ -99,7 +108,7 @@ MainStroke.Color = Color3.fromRGB(230, 100, 230)
 MainStroke.Thickness = 1
 MainStroke.Transparency = 0.3
 
--- MINIMIZE SYSTEM
+-- MINIMIZE BUTTON
 local MinBtn = Instance.new("TextButton", ScreenGui)
 MinBtn.Size = UDim2.new(0, 45, 0, 45)
 MinBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
@@ -125,16 +134,13 @@ CloseToggle.Font = Enum.Font.GothamBold
 CloseToggle.TextSize = 16
 
 CloseToggle.MouseButton1Click:Connect(function()
-    Main:TweenSize(UDim2.new(0, 0, 0, 0), "Out", "Quad", 0.15, true, function()
-        Main.Visible = false
-        MinBtn.Visible = true
-    end)
+    Main.Visible = false
+    MinBtn.Visible = true
 end)
 
 MinBtn.MouseButton1Click:Connect(function()
     MinBtn.Visible = false
     Main.Visible = true
-    Main:TweenSize(UDim2.new(0, 580, 0, 420), "Out", "Quad", 0.15, true)
 end)
 
 -- SIDEBAR
@@ -171,7 +177,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V28)"
+Subtitle.Text = "Full AFK Automation (RiooHub V29)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -224,7 +230,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: V28 Safe Hook Engine Ready. Crash protection active."
+StatusLog.Text = "[SYSTEM]: RiooHub V29 Injector loaded. Secure Environment Active."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -299,7 +305,7 @@ local function createZoneToggle(text, pos, parent, callback)
     end)
 end
 
--- AUTOMATION LOOPS
+-- LOOPS MANAGEMENT
 local function paksaSpeedGame(targetSpeed)
     local speedRemote = getSafeRemote("RequestGameSpeed")
     if speedRemote then
@@ -335,7 +341,7 @@ task.spawn(function()
     end
 end)
 
--- SAFE INTERACTIVE RECORDER (Menggunakan Klik Mouse + Tracker Dinamis)
+-- INTERACTIVE RECORDER BUTTON
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
@@ -345,7 +351,7 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started. Put your units normally.")
+        appendZoneLog("System", "Recording active. Place your units.")
         
         local recordConnection
         recordConnection = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
@@ -362,16 +368,16 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
                     X = targetPos.X,
                     Y = targetPos.Y,
                     Z = targetPos.Z,
-                    SavedUID = LastSelectedUnitUID -- Mengambil ID unit terakhir yang lu pilih di game
+                    SavedUID = LastSelectedUnitUID
                 })
-                appendZoneLog("Spawn", "Captured position with current unit.")
+                appendZoneLog("Spawn", "Buffered position.")
             end
         end)
     else
         isRecording = false
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Saved! sequences: %d", #MacroData))
+        appendZoneLog("System", string.format("Saved sequences: %d", #MacroData))
         
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
@@ -382,7 +388,7 @@ end)
 local function muatDataMakro()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        appendZoneLog("Load", string.format("Loaded macro. %d sequences ready.", #MacroData))
+        appendZoneLog("Load", string.format("Loaded macro file (%d slots armed).", #MacroData))
         return true
     end
     return false
@@ -391,7 +397,7 @@ createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 75), UDim2.new(1, -2
 
 local function jalankanPlayback()
     if #MacroData == 0 then return end
-    appendZoneLog("Play", "Running macro playback...")
+    appendZoneLog("Play", "Running playback injection...")
     task.spawn(function()
         if speedToggleActive then paksaSpeedGame(currentSpeedSetting) end
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
@@ -452,7 +458,7 @@ end)
 
 -- AUTO RUN HOOK
 task.spawn(function()
-    task.wait(3)
+    task.wait(2)
     local suksesLoad = muatDataMakro()
     if suksesLoad and isfile and isfile("rioo_autoreplay_state.txt") then
         local state = readfile("rioo_autoreplay_state.txt")
