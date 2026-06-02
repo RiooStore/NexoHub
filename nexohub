@@ -1,8 +1,7 @@
--- === RIOOHUB V39 (PRECISE UPGRADE DETECTOR + TIME SYNC + FULL FEATURES) ===
+-- === RIOOHUB PURE MACRO ENGINE (RESET TO ADVANCED DETECTOR) ===
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer
@@ -11,414 +10,293 @@ if not LocalPlayer then
     LocalPlayer = Players.LocalPlayer
 end
 
-local TargetGuiParent = LocalPlayer:WaitForChild("PlayerGui")
+local TargetGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Membersihkan sisa UI lama agar tidak menumpuk
-for _, oldGui in pairs(TargetGuiParent:GetChildren()) do
-    if oldGui.Name == "RiooHub_ZoneEngine" then
-        oldGui:Destroy()
-    end
+-- Bersihkan UI lama jika ada
+if TargetGui:FindFirstChild("RiooHub_PureMacro") then 
+    TargetGui.RiooHub_PureMacro:Destroy() 
 end
 
-local FILE_NAME = "rioo_precise_macro.txt"
+-- KONFIGURASI UTAMA
+local FILE_NAME = "rioo_pure_macro.txt"
 local isRecording = false
 local StartTime = 0
 local MacroData = {}
 
--- Fitur Status Toggles
-local autoSkipEnabled = false
-local autoVoteReadyEnabled = false
-local autoReplayEnabled = false
-local speedHackEnabled = false
-
-local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
-
-local function dapatkanFolderTower()
+-- Folder tempat unit berada (Menyesuaikan game Tower Defense)
+local function getTowerFolder()
     return Workspace:FindFirstChild("Towers") 
         or Workspace:FindFirstChild("Units") 
         or Workspace:FindFirstChild("PlacedTowers") 
         or Workspace
 end
 
-local function getSafeRemote(remoteName)
-    local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes") or ReplicatedStorage
-    return eventsFolder:FindFirstChild(remoteName, true)
+-- Ambil Remote Event/Function Game secara aman
+local function getGameRemote(name)
+    local events = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes") or ReplicatedStorage
+    return events:FindFirstChild(name, true)
 end
 
 -- =========================================================================
--- TAMPILAN UI ORIGINAL UNGU-PINK
+-- SIMPLE UI (ASAL WORK & RINGAN)
 -- =========================================================================
-local ScreenGui = Instance.new("ScreenGui", TargetGuiParent)
-ScreenGui.Name = "RiooHub_ZoneEngine"
+local ScreenGui = Instance.new("ScreenGui", TargetGui)
+ScreenGui.Name = "RiooHub_PureMacro"
 ScreenGui.ResetOnSpawn = false
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 580, 0, 420)
-Main.Position = UDim2.new(0.5, -290, 0.5, -210)
-Main.BackgroundColor3 = Color3.fromRGB(15, 11, 25)
+Main.Size = UDim2.new(0, 280, 0, 220)
+Main.Position = UDim2.new(0.5, -140, 0.5, -110)
+Main.BackgroundColor3 = Color3.fromRGB(20, 15, 30)
 Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
 
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-local MainStroke = Instance.new("UIStroke", Main)
-MainStroke.Color = Color3.fromRGB(230, 100, 230)
-MainStroke.Thickness = 1
+local Corner = Instance.new("UICorner", Main)
+Corner.CornerRadius = UDim.new(0, 8)
 
-local MinBtn = Instance.new("TextButton", ScreenGui)
-MinBtn.Size = UDim2.new(0, 45, 0, 45)
-MinBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
-MinBtn.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
-MinBtn.Text = "Z"
-MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Font = Enum.Font.GothamBold
-MinBtn.TextSize = 20
-MinBtn.Visible = false
-Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(1, 0)
+local Stroke = Instance.new("UIStroke", Main)
+Stroke.Color = Color3.fromRGB(230, 100, 230)
+Stroke.Thickness = 1.5
 
-local CloseToggle = Instance.new("TextButton", Main)
-CloseToggle.Size = UDim2.new(0, 30, 0, 30)
-CloseToggle.Position = UDim2.new(1, -40, 0, 10)
-CloseToggle.BackgroundTransparency = 1
-CloseToggle.Text = "—"
-CloseToggle.TextColor3 = Color3.fromRGB(230, 100, 230)
-CloseToggle.Font = Enum.Font.GothamBold
-
-CloseToggle.MouseButton1Click:Connect(function() Main.Visible = false; MinBtn.Visible = true end)
-MinBtn.MouseButton1Click:Connect(function() MinBtn.Visible = false; Main.Visible = true end)
-
-local Sidebar = Instance.new("Frame", Main)
-Sidebar.Size = UDim2.new(0, 50, 1, 0)
-Sidebar.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
-Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
-
-local Topbar = Instance.new("Frame", Main)
-Topbar.Size = UDim2.new(1, -50, 0, 50)
-Topbar.Position = UDim2.new(0, 50, 0, 0)
-Topbar.BackgroundTransparency = 1
-
-local Title = Instance.new("TextLabel", Topbar)
-Title.Size = UDim2.new(0, 200, 0, 25)
-Title.Position = UDim2.new(0, 15, 0, 8)
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
-Title.Text = "Main Engine"
+Title.Text = "RIOO PURE MACRO ENGINE"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
-Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.TextSize = 13
 
-local Subtitle = Instance.new("TextLabel", Topbar)
-Subtitle.Size = UDim2.new(0, 350, 0, 15)
-Subtitle.Position = UDim2.new(0, 15, 0, 26)
-Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V39 Sempurna)"
-Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
-Subtitle.Font = Enum.Font.SourceSans
-Subtitle.TextSize = 12
-Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+local LogLabel = Instance.new("TextLabel", Main)
+LogLabel.Size = UDim2.new(1, -20, 0, 30)
+LogLabel.Position = UDim2.new(0, 10, 0, 35)
+LogLabel.BackgroundColor3 = Color3.fromRGB(10, 5, 15)
+LogLabel.Text = "Status: Idle..."
+LogLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
+LogLabel.Font = Enum.Font.SourceSans
+LogLabel.TextSize = 12
+Instance.new("UICorner", LogLabel).CornerRadius = UDim.new(0, 4)
 
-local Container = Instance.new("Frame", Main)
-Container.Size = UDim2.new(1, -70, 1, -70)
-Container.Position = UDim2.new(0, 60, 0, 60)
-Container.BackgroundTransparency = 1
-
-local function createZoneSection(name, iconText, size, pos)
-    local box = Instance.new("Frame", Container)
-    box.Size = size
-    box.Position = pos
-    box.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-    
-    local titleLbl = Instance.new("TextLabel", box)
-    titleLbl.Size = UDim2.new(1, -10, 0, 25)
-    titleLbl.Position = UDim2.new(0, 10, 0, 4)
-    titleLbl.BackgroundTransparency = 1
-    titleLbl.Text = iconText .. "  " .. name
-    titleLbl.TextColor3 = Color3.fromRGB(240, 220, 255)
-    titleLbl.Font = Enum.Font.GothamBold
-    titleLbl.TextSize = 11
-    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-    return box
+local function setStatus(txt)
+    LogLabel.Text = "Status: " .. txt
 end
 
-local LeftBox = createZoneSection("Macro Automation", "📈", UDim2.new(0, 245, 0, 195), UDim2.new(0, 0, 0, 0))
-local RightBox = createZoneSection("Match Settings", "⚙️", UDim2.new(0, 245, 0, 195), UDim2.new(0, 260, 0, 0))
-local StatusBox = createZoneSection("Console Log Activity", "📋", UDim2.new(1, -5, 0, 140), UDim2.new(0, 0, 0, 210))
-
-local LogScroll = Instance.new("ScrollingFrame", StatusBox)
-LogScroll.Size = UDim2.new(1, -20, 1, -35)
-LogScroll.Position = UDim2.new(0, 10, 0, 30)
-LogScroll.BackgroundTransparency = 1
-LogScroll.CanvasSize = UDim2.new(0, 0, 4, 0)
-LogScroll.ScrollBarThickness = 3
-LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
-
-local StatusLog = Instance.new("TextLabel", LogScroll)
-StatusLog.Size = UDim2.new(1, 0, 1, 0)
-StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: RiooHub V39 Sempurna Loaded. Ready to Record."
-StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
-StatusLog.Font = Enum.Font.SourceSans
-StatusLog.TextSize = 12
-StatusLog.TextXAlignment = Enum.TextXAlignment.Left
-StatusLog.TextYAlignment = Enum.TextYAlignment.Top
-StatusLog.TextWrapped = true
-
-local function appendZoneLog(actionType, text)
-    local timestamp = os.date("%X")
-    StatusLog.Text = string.format("[%s] [%s] %s\n", timestamp, string.upper(actionType), text) .. StatusLog.Text
-end
-
-local function createZoneButton(text, pos, size, parent, callback)
-    local btn = Instance.new("TextButton", parent)
-    btn.Size = size
-    btn.Position = pos
-    btn.BackgroundColor3 = Color3.fromRGB(26, 18, 42)
+local function createButton(text, yPos, callback)
+    local btn = Instance.new("TextButton", Main)
+    btn.Size = UDim2.new(1, -20, 0, 35)
+    btn.Position = UDim2.new(0, 10, 0, yPos)
+    btn.BackgroundColor3 = Color3.fromRGB(35, 25, 50)
     btn.Text = text
-    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
     btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 11
-    btn.BorderSizePixel = 0
+    btn.TextSize = 12
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
 
-local function createZoneToggle(text, pos, parent, callback)
-    local row = Instance.new("Frame", parent)
-    row.Size = UDim2.new(1, -20, 0, 26)
-    row.Position = pos
-    row.BackgroundTransparency = 1
+-- =========================================================================
+-- CORE CORE DETECTOR: MENYADAP FUNGSI INTERNAL GAME MURNI
+-- =========================================================================
+local spawnHook = nil
+local gameHook = nil
+
+local function StartPureRecording()
+    MacroData = {}
+    StartTime = os.clock()
+    local towerFolder = getTowerFolder()
     
-    local txt = Instance.new("TextLabel", row)
-    txt.Size = UDim2.new(0, 160, 1, 0)
-    txt.BackgroundTransparency = 1
-    txt.Text = text
-    txt.TextColor3 = Color3.fromRGB(190, 180, 200)
-    txt.Font = Enum.Font.SourceSans
-    txt.TextSize = 13
-    txt.TextXAlignment = Enum.TextXAlignment.Left
+    -- 1. Deteksi Fungsi Spawn (Melihat saat Unit Baru Ditambahkan ke Game)
+    spawnHook = towerFolder.ChildAdded:Connect(function(child)
+        if not isRecording then return end
+        task.wait(0.05) -- Jeda mikro agar properti unit ter-load sempurna oleh game
+        local primary = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+        if primary then
+            local uidValue = child:FindFirstChild("UID") or child:FindFirstChild("Id")
+            local savedUID = uidValue and uidValue.Value or "default_uid"
+            
+            table.insert(MacroData, {
+                Type = "Spawn",
+                Time = os.clock() - StartTime,
+                X = primary.Position.X,
+                Y = primary.Position.Y,
+                Z = primary.Position.Z,
+                UID = savedUID
+            })
+            setStatus("Recorded: Spawn Unit!")
+        end
+    end)
     
-    local switch = Instance.new("TextButton", row)
-    switch.Size = UDim2.new(0, 32, 0, 16)
-    switch.Position = UDim2.new(1, -32, 0, 5)
-    switch.BackgroundColor3 = Color3.fromRGB(45, 33, 62)
-    switch.Text = ""
-    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+    -- 2. Deteksi Fungsi Upgrade & Jual (Menyadap Jalur Komunikasi Game ke Server)
+    -- Menggunakan metatable hooking tingkat tinggi yang aman dari deteksi game
+    local rawMT = getrawmetatable(game)
+    setreadonly(rawMT, false)
+    local oldNamecall = rawMT.__namecall
     
-    local circle = Instance.new("Frame", switch)
-    circle.Size = UDim2.new(0, 10, 0, 10)
-    circle.Position = UDim2.new(0, 3, 0, 3)
-    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+    gameHook = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        if isRecording and (method == "InvokeServer" or method == "FireServer") then
+            -- Deteksi Fungsi Upgrade
+            if self.Name == "UpgradeTower" and args[1] then
+                local targetUID = args[1]
+                -- Cari posisi unit berdasarkan UID-nya saat ini di map
+                local x, y, z = 0, 0, 0
+                for _, t in pairs(towerFolder:GetChildren()) do
+                    local id = t:FindFirstChild("UID") or t:FindFirstChild("Id")
+                    if id and id.Value == targetUID then
+                        local part = t.PrimaryPart or t:FindFirstChildWhichIsA("BasePart")
+                        if part then x, y, z = part.Position.X, part.Position.Y, part.Position.Z end
+                        break
+                    end
+                end
+                
+                table.insert(MacroData, {
+                    Type = "Upgrade",
+                    Time = os.clock() - StartTime,
+                    X = x, Y = y, Z = z,
+                    UID = targetUID
+                })
+                setStatus("Recorded: Upgrade Unit!")
+                
+            -- Deteksi Fungsi Jual (Sell)
+            elseif (self.Name == "SellTower" or self.Name == "Sell") and args[1] then
+                local targetUID = args[1]
+                local x, y, z = 0, 0, 0
+                for _, t in pairs(towerFolder:GetChildren()) do
+                    local id = t:FindFirstChild("UID") or t:FindFirstChild("Id")
+                    if id and id.Value == targetUID then
+                        local part = t.PrimaryPart or t:FindFirstChildWhichIsA("BasePart")
+                        if part then x, y, z = part.Position.X, part.Position.Y, part.Position.Z end
+                        break
+                    end
+                end
+                
+                table.insert(MacroData, {
+                    Type = "Sell",
+                    Time = os.clock() - StartTime,
+                    X = x, Y = y, Z = z,
+                    UID = targetUID
+                })
+                setStatus("Recorded: Sell Unit!")
+            end
+        end
+        return oldNamecall(self, ...)
+    end))
+end
+
+local function StopPureRecording()
+    if spawnHook then spawnHook:Disconnect() spawnHook = nil end
+    -- Mengembalikan fungsi namecall bawaan game agar tidak bocor/lag
+    if gameHook then
+        local rawMT = getrawmetatable(game)
+        setreadonly(rawMT, false)
+        rawMT.__namecall = gameHook
+        gameHook = nil
+    end
+end
+
+-- =========================================================================
+-- PLAYBACK ENGINE (PRESISI TINGGI & PENEMPATAN SAMA PERSIS)
+-- =========================================================================
+local function PlayPureMacro()
+    if #MacroData == 0 then setStatus("No data to play!") return end
+    setStatus("Playing Automation...")
     
-    local active = false
-    switch.MouseButton1Click:Connect(function()
-        active = not active
-        local targetPos = active and UDim2.new(1, -13, 0, 3) or UDim2.new(0, 3, 0, 3)
-        local targetColor = active and Color3.fromRGB(230, 100, 230) or Color3.fromRGB(45, 33, 62)
-        TweenService:Create(circle, TweenInfo.new(0.12), {Position = targetPos}):Play()
-        TweenService:Create(switch, TweenInfo.new(0.12), {BackgroundColor3 = targetColor}):Play()
-        callback(active)
+    task.spawn(function()
+        -- Urutkan data berdasarkan waktu agar tidak tertukar susunannya
+        table.sort(MacroData, function(a, b) return a.Time < b.Time end)
+        local playbackStart = os.clock()
+        local towerFolder = getTowerFolder()
+        
+        for i = 1, #MacroData do
+            local step = MacroData[i]
+            
+            -- Sinkronisasi Waktu Menggunakan Kalkulasi Delta Waktu Murni (Presisi Milidetik)
+            while (os.clock() - playbackStart) < step.Time do
+                task.wait()
+            end
+            
+            local targetPos = Vector3.new(step.X, step.Y, step.Z)
+            
+            if step.Type == "Spawn" then
+                local placeRemote = getGameRemote("PlaceTower") or getGameRemote("Place")
+                if placeRemote then
+                    task.spawn(function()
+                        if placeRemote:IsA("RemoteFunction") then 
+                            placeRemote:InvokeServer(targetPos, step.UID, 0) 
+                        else 
+                            placeRemote:FireServer(targetPos, step.UID, 0) 
+                        end
+                    end)
+                    setStatus("Executed Spawn ["..i.."]")
+                end
+                
+            elseif step.Type == "Upgrade" or step.Type == "Sell" then
+                -- Cari UID unit live yang posisinya paling pas dengan koordinat saat direkam
+                local liveUID = nil
+                local closestDist = math.huge
+                for _, t in pairs(towerFolder:GetChildren()) do
+                    local bp = t:FindFirstChildWhichIsA("BasePart") or t.PrimaryPart
+                    if bp then
+                        local dist = (bp.Position - targetPos).Magnitude
+                        if dist < closestDist and dist < 5 then
+                            closestDist = dist
+                            local id = t:FindFirstChild("UID") or t:FindFirstChild("Id")
+                            liveUID = id and id.Value or t.Name
+                        end
+                    end
+                end
+                
+                if liveUID then
+                    local targetRemoteName = (step.Type == "Upgrade") and "UpgradeTower" or "SellTower"
+                    local remote = getGameRemote(targetRemoteName) or getGameRemote("Sell")
+                    if remote then
+                        task.spawn(function()
+                            if remote:IsA("RemoteFunction") then remote:InvokeServer(liveUID) else remote:FireServer(liveUID) end
+                        end)
+                        setStatus("Executed "..step.Type.." ["..i.."]")
+                    end
+                end
+            end
+        end
+        setStatus("Macro Playback Finished!")
     end)
 end
 
 -- =========================================================================
--- ADVANCED ENGINE & DETECTOR (ANTI-LAG TIME & REAL UPGRADE DETECTOR)
+-- TOMBOL KONTROL UI
 -- =========================================================================
-local placeConnection = nil
-local upgradeDetectorConnection = nil
-
-local function AmbilTowerAktifDariUI()
-    -- Melacak tower mana yang sedang diseleksi oleh menu upgrade game asli
-    local mouse = LocalPlayer:GetMouse()
-    local target = mouse.Target
-    local folder = dapatkanFolderTower()
-    if target and target:IsDescendantOf(folder) then
-        local obj = target
-        while obj and obj.Parent ~= folder do
-            obj = obj.Parent
-        end
-        return obj
-    end
-    return nil
-end
-
 local RecordBtn
-RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
-    local currentFolder = dapatkanFolderTower()
-    
+RecordBtn = createButton("START RECORD", 80, function()
     if not isRecording then
-        MacroData = {}
-        StartTime = os.clock()
         isRecording = true
-        RecordBtn.Text = "🛑 STOP RECORDING"
-        RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording macro... Upgrade & Place units now.")
-        
-        -- 1. Deteksi Amankan Penempatan (Spawn)
-        if currentFolder and not placeConnection then
-            placeConnection = currentFolder.ChildAdded:Connect(function(child)
-                if not isRecording then return end
-                task.wait(0.05)
-                local primaryPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
-                if primaryPart then
-                    table.insert(MacroData, {
-                        Type = "Spawn",
-                        Time = os.clock() - StartTime,
-                        X = primaryPart.Position.X,
-                        Y = primaryPart.Position.Y,
-                        Z = primaryPart.Position.Z,
-                        SavedUID = LastSelectedUnitUID
-                    })
-                    appendZoneLog("Place", "Placement tracked successfully.")
-                end
-            end)
-        end
-        
-        -- 2. AKURAT: Hanya mendeteksi jika tombol upgrade asli di layar ditekan
-        for _, gui in pairs(TargetGuiParent:GetDescendants()) do
-            if gui:IsA("TextButton") and (string.find(string.lower(gui.Name), "upgrade") or string.find(string.lower(gui.Text), "upgrade")) then
-                upgradeDetectorConnection = gui.MouseButton1Click:Connect(function()
-                    if not isRecording then return end
-                    local activeTower = AmbilTowerAktifDariUI()
-                    if activeTower then
-                        local p = activeTower.PrimaryPart or activeTower:FindFirstChildWhichIsA("BasePart")
-                        if p then
-                            table.insert(MacroData, {
-                                Type = "Upgrade",
-                                Time = os.clock() - StartTime,
-                                X = p.Position.X,
-                                Y = p.Position.Y,
-                                Z = p.Position.Z
-                            })
-                            appendZoneLog("Upgrade", "Genuine Upgrade registered via Click UI!")
-                        end
-                    end
-                end)
-                break
-            end
-        end
+        RecordBtn.Text = "STOP RECORD"
+        RecordBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
+        setStatus("Recording internal functions...")
+        StartPureRecording()
     else
         isRecording = false
-        if placeConnection then placeConnection:Disconnect() placeConnection = nil end
-        if upgradeDetectorConnection then upgradeDetectorConnection:Disconnect() upgradeDetectorConnection = nil end
-        
-        RecordBtn.Text = "START MACRO RECORD"
-        RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Saved moves: %d", #MacroData))
-        
+        RecordBtn.Text = "START RECORD"
+        RecordBtn.BackgroundColor3 = Color3.fromRGB(35, 25, 50)
+        StopPureRecording()
+        setStatus("Saved " .. #MacroData .. " actions.")
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
         end
     end
 end)
 
-createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 75), UDim2.new(1, -20, 0, 32), LeftBox, function()
+createButton("LOAD RECORD DATA", 125, function()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        appendZoneLog("Load", string.format("Loaded %d actions.", #MacroData))
+        setStatus("Loaded " .. #MacroData .. " actions successfully.")
     else
-        appendZoneLog("Error", "No macro file found.")
+        setStatus("No macro file found on device.")
     end
 end)
 
-createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, function()
-    if #MacroData == 0 then appendZoneLog("Error", "No macro data loaded!") return end
-    appendZoneLog("Play", "Deploying macro playback...")
-    
-    task.spawn(function()
-        table.sort(MacroData, function(a, b) return a.Time < b.Time end)
-        local playbackStart = os.clock()
-        local currentFolder = dapatkanFolderTower()
-        local upgradeRemote = getSafeRemote("UpgradeTower")
-        
-        for index = 1, #MacroData do
-            local step = MacroData[index]
-            
-            -- FIX JEDA WAKTU PRESISI (Menggunakan Delta Time Akurat)
-            local targetTime = step.Time
-            while (os.clock() - playbackStart) < targetTime do
-                task.wait()
-            end
-            
-            if step.Type == "Spawn" then
-                local placeRemote = getSafeRemote("PlaceTower") or getSafeRemote("Place")
-                if placeRemote then
-                    local finalArgs = {[1] = Vector3.new(step.X, step.Y, step.Z), [2] = step.SavedUID, [3] = 0}
-                    task.spawn(function()
-                        if placeRemote:IsA("RemoteFunction") then placeRemote:InvokeServer(unpack(finalArgs)) else placeRemote:FireServer(unpack(finalArgs)) end
-                    end)
-                    appendZoneLog("Spawn", string.format("Placed sequence %d.", index))
-                end
-            elseif step.Type == "Upgrade" and upgradeRemote then
-                local targetPos = Vector3.new(step.X, step.Y, step.Z)
-                local jarakTerdekat = math.huge
-                local liveUID = nil
-                
-                for _, t in pairs(currentFolder:GetChildren()) do
-                    local bp = t:FindFirstChildWhichIsA("BasePart") or t.PrimaryPart
-                    if bp then
-                        local dist = (bp.Position - targetPos).Magnitude
-                        if dist < jarakTerdekat and dist < 6 then
-                            jarakTerdekat = dist
-                            local uidVal = t:FindFirstChild("UID") or t:FindFirstChild("Id")
-                            liveUID = uidVal and uidVal.Value or t.Name
-                        end
-                    end
-                end
-                
-                if liveUID then
-                    task.spawn(function()
-                        upgradeRemote:InvokeServer(liveUID)
-                    end)
-                    appendZoneLog("Upgrade", string.format("Upgraded sequence %d.", index))
-                end
-            end
-        end
-        appendZoneLog("System", "AFK Playback Finished!")
-    end)
+createButton("RUN PLAYBACK (AUTO)", 170, function()
+    PlayPureMacro()
 end)
-
--- =========================================================================
--- MATCH AUTOMATION LOOP FUNCTION (FITUR UTAMA DIKEMBALIKAN)
--- =========================================================================
-task.spawn(function()
-    while task.wait(1) do
-        pcall(function()
-            if autoSkipEnabled then
-                local skipRemote = getSafeRemote("SkipWave") or getSafeRemote("Skip") or getSafeRemote("VoteSkip")
-                if skipRemote then 
-                    if skipRemote:IsA("RemoteFunction") then skipRemote:InvokeServer() else skipRemote:FireServer() end
-                end
-            end
-            
-            if autoVoteReadyEnabled then
-                local voteRemote = getSafeRemote("VoteMap") or getSafeRemote("SetDifficulty") or getSafeRemote("Ready")
-                if voteRemote then
-                    if voteRemote:IsA("RemoteFunction") then voteRemote:InvokeServer("Easy") else voteRemote:FireServer("Easy") end
-                end
-            end
-            
-            if autoReplayEnabled then
-                local replayRemote = getSafeRemote("Replay") or getSafeRemote("PlayAgain") or getSafeRemote("TeleportLobby")
-                if replayRemote then 
-                    if replayRemote:IsA("RemoteFunction") then replayRemote:InvokeServer() else replayRemote:FireServer() end
-                end
-            end
-            
-            if speedHackEnabled then
-                local speedRemote = getSafeRemote("ChangeSpeed") or getSafeRemote("VoteSpeed") or getSafeRemote("SpeedUp")
-                if speedRemote then
-                    if speedRemote:IsA("RemoteFunction") then speedRemote:InvokeServer(3) else speedRemote:FireServer(3) end
-                end
-            end
-        end)
-    end
-end)
-
--- TOGGLES ACTIVATOR
-createZoneToggle("Force Game Speed x3", UDim2.new(0, 10, 0, 32), RightBox, function(state) speedHackEnabled = state end)
-createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 60), RightBox, function(state) autoSkipEnabled = state end)
-createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 88), RightBox, function(state) autoVoteReadyEnabled = state end)
-createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 116), RightBox, function(state) autoReplayEnabled = state end)
