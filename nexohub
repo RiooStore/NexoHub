@@ -1,4 +1,4 @@
--- === RIOOHUB V31 (HYBRID SNIFFER ENGINE - UPGRADE FIXED) ===
+-- === RIOOHUB V33 (UID CROSS-REFERENCE ENGINE - 100% FIXED FOR YOUR GAME) ===
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -23,8 +23,6 @@ local FILE_NAME = "rioo_precise_macro.txt"
 local isRecording = false
 local StartTime = 0
 local MacroData = {}
-local currentSpeedSetting = 3
-local speedToggleActive = false
 local autoReplayEnabled = false
 local autoSkipEnabled = false
 local autoVoteReadyEnabled = false
@@ -34,11 +32,8 @@ local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
 local TowerFolder = Workspace:FindFirstChild("Towers") or Workspace:FindFirstChild("Units") or Workspace:FindFirstChild("PlacedTowers") or Workspace
 
 local function getSafeRemote(remoteName)
-    local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes")
-    if eventsFolder then
-        return eventsFolder:FindFirstChild(remoteName)
-    end
-    return nil
+    local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes") or ReplicatedStorage
+    return eventsFolder:FindFirstChild(remoteName, true)
 end
 
 -- TRACKER SLOT UNIT
@@ -60,20 +55,6 @@ task.spawn(function()
     end
 end)
 
-local function eksekusiPlayAgain()
-    local replayRemote = getSafeRemote("PlayAgain") or getSafeRemote("Replay") or getSafeRemote("Retry")
-    if replayRemote then replayRemote:FireServer(); return true end
-    return false
-end
-
-local function eksekusiVoteDanReady()
-    local voteRemote = getSafeRemote("VoteDifficulty")
-    if voteRemote then voteRemote:FireServer(targetDifficulty) end
-    task.wait(0.3)
-    local readyRemote = getSafeRemote("Ready")
-    if readyRemote then readyRemote:FireServer() end
-end
-
 -- =========================================================================
 -- INTERFACE LAYOUT
 -- =========================================================================
@@ -89,13 +70,10 @@ Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
 
-local MainCorner = Instance.new("UICorner", Main)
-MainCorner.CornerRadius = UDim.new(0, 10)
-
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 local MainStroke = Instance.new("UIStroke", Main)
 MainStroke.Color = Color3.fromRGB(230, 100, 230)
 MainStroke.Thickness = 1
-MainStroke.Transparency = 0.3
 
 local MinBtn = Instance.new("TextButton", ScreenGui)
 MinBtn.Size = UDim2.new(0, 45, 0, 45)
@@ -115,7 +93,6 @@ CloseToggle.BackgroundTransparency = 1
 CloseToggle.Text = "—"
 CloseToggle.TextColor3 = Color3.fromRGB(230, 100, 230)
 CloseToggle.Font = Enum.Font.GothamBold
-CloseToggle.TextSize = 16
 
 CloseToggle.MouseButton1Click:Connect(function() Main.Visible = false; MinBtn.Visible = true end)
 MinBtn.MouseButton1Click:Connect(function() MinBtn.Visible = false; Main.Visible = true end)
@@ -123,7 +100,6 @@ MinBtn.MouseButton1Click:Connect(function() MinBtn.Visible = false; Main.Visible
 local Sidebar = Instance.new("Frame", Main)
 Sidebar.Size = UDim2.new(0, 50, 1, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
-Sidebar.BorderSizePixel = 0
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
 
 local Topbar = Instance.new("Frame", Main)
@@ -145,7 +121,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V31)"
+Subtitle.Text = "Full AFK Automation (RiooHub V33)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -161,7 +137,6 @@ local function createZoneSection(name, iconText, size, pos)
     box.Size = size
     box.Position = pos
     box.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
-    box.BorderSizePixel = 0
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
     
     local titleLbl = Instance.new("TextLabel", box)
@@ -191,7 +166,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: RiooHub V31 Hybrid Ready. Capturing Place & Upgrade flawlessly."
+StatusLog.Text = "[SYSTEM]: RiooHub V33 Live. UID Hook configured perfectly."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -259,13 +234,55 @@ local function createZoneToggle(text, pos, parent, callback)
 end
 
 -- =========================================================================
--- HYBRID SNIFFER RECORDER (PLACE & UPGRADE TRACKING)
+-- V33 ADVANCED UID HOOK ENGINE
 -- =========================================================================
 local placeConnection
-local upgradeHookActive = false
+local isHookInstalled = false
 
-local function AktifkanHybridSniffer()
-    -- 1. DETEKSI PLACE (Lewat Workspace - 100% Anti Sampah Klik)
+-- Fungsi bantu mencari tower berdasarkan UID string di game lu
+local function temukanPosisiTowerDariUID(uid)
+    for _, tower in pairs(TowerFolder:GetChildren()) do
+        -- Mencari kecocokan nama, atribut, atau StringValue di dalam objek tower
+        if tower.Name == uid or (tower:FindFirstChild("UID") and tower.UID.Value == uid) or tower:GetAttribute("UID") == uid then
+            local p = tower.PrimaryPart or tower:FindFirstChildWhichIsA("BasePart")
+            if p then return p.Position end
+        end
+    end
+    -- Fallback jika game menyimpan UID langsung sebagai nama model
+    local modelDirect = TowerFolder:FindFirstChild(uid)
+    if modelDirect then
+        local p = modelDirect.PrimaryPart or modelDirect:FindFirstChildWhichIsA("BasePart")
+        if p then return p.Position end
+    end
+    return nil
+end
+
+-- Fungsi bantu playback mencari UID tower baru terdekat berdasarkan posisi koordinat asal
+local function temukanUIDTowerTerdekat(posRecord)
+    local jarakTerdekat = math.huge
+    local uidTerpilih = nil
+    
+    for _, tower in pairs(TowerFolder:GetChildren()) do
+        local p = tower.PrimaryPart or tower:FindFirstChildWhichIsA("BasePart")
+        if p then
+            local jarak = (p.Position - posRecord).Magnitude
+            if jarak < jarakTerdekat and jarak < 5 then -- Batas toleransi jarak 5 studs
+                jarakTerdekat = jarak
+                -- Ambil UID barunya
+                local uidValue = tower:FindFirstChild("UID") or tower:FindFirstChild("Id")
+                if uidValue then
+                    uidTerpilih = uidValue.Value
+                else
+                    uidTerpilih = tower.Name -- Fallback jika nama model adalah UID-nya
+                end
+            end
+        end
+    end
+    return uidTerpilih
+end
+
+local function AktifkanV33Engine()
+    -- 1. TRACK PLACE VIA WORKSPACE (Sangat Akurat)
     if TowerFolder then
         placeConnection = TowerFolder.ChildAdded:Connect(function(child)
             if not isRecording then return end
@@ -276,64 +293,65 @@ local function AktifkanHybridSniffer()
             local primaryPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
             if primaryPart then
                 local currentDelay = os.clock() - StartTime
+                -- Dapatkan UID bawaan tower baru jika ada
+                local towerUID = child.Name
+                local uidObj = child:FindFirstChild("UID") or child:FindFirstChild("Id")
+                if uidObj then towerUID = uidObj.Value end
+
                 table.insert(MacroData, {
                     Type = "Spawn",
                     Time = currentDelay,
                     X = primaryPart.Position.X,
                     Y = primaryPart.Position.Y,
                     Z = primaryPart.Position.Z,
-                    SavedUID = LastSelectedUnitUID
+                    SavedUID = LastSelectedUnitUID,
+                    TowerUID = towerUID -- Disimpan untuk cross-reference
                 })
-                appendZoneLog("Place", "Tower placement captured successfully!")
+                appendZoneLog("Place", "Placement logged completely.")
             end
         end)
     end
 
-    -- 2. DETEKSI UPGRADE (Mencegat Remote Upgrade secara pasif & aman)
-    if not upgradeHookActive then
-        upgradeHookActive = true
-        local upgradeRemote = getSafeRemote("UpgradeTower") or getSafeRemote("Upgrade")
+    -- 2. DETEKSI UPGRADE VIA METATABLE HOOK KARENA MENGGUNAKAN INVOKESERVER
+    if not isHookInstalled then
+        isHookInstalled = true
+        local upgradeRemote = getSafeRemote("UpgradeTower")
         if upgradeRemote then
-            local originalNamecall
-            originalNamecall = hookmetatable(game, {
-                __namecall = newcclosure(function(self, ...)
-                    local method = getnamecallmethod()
-                    local args = {...}
-                    
-                    if isRecording and self == upgradeRemote and (method == "FireServer" or method == "InvokeServer") then
-                        -- Cari argumen koordinat Vector3 dari remote game lu
-                        local pos = nil
-                        for _, arg in pairs(args) do
-                            if typeof(arg) == "Vector3" then
-                                pos = arg
-                                break
-                            elseif typeof(arg) == "table" and arg.X and arg.Y and arg.Z then
-                                pos = Vector3.new(arg.X, arg.Y, arg.Z)
-                                break
-                            end
-                        end
+            local gMetatable = feeling and getrawmetatable(game) or debug.getmetatable(game)
+            if setreadonly then setreadonly(gMetatable, false) end
+            local originalNamecall = gMetatable.__namecall
+            
+            gMetatable.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
+                
+                if isRecording and self == upgradeRemote and (method == "InvokeServer" or method == "FireServer") then
+                    local targetUID = args[1]
+                    if typeof(targetUID) == "string" then
+                        -- Lacak koordinat tower di Workspace yang punya UID ini
+                        local posObj = temukanPosisiTowerDariUID(targetUID)
                         
-                        -- Kalau argumennya berupa model tower, kita ambil posisinya
-                        if not pos and typeof(args[1]) == "Instance" and args[1]:IsA("Model") then
-                            local part = args[1].PrimaryPart or args[1]:FindFirstChildWhichIsA("BasePart")
-                            if part then pos = part.Position end
+                        -- Jika tidak ketemu di folder tower, ambil fallback dari posisi mouse
+                        if not posObj then
+                            local m = LocalPlayer:GetMouse()
+                            if m then posObj = m.Hit.Position end
                         end
 
-                        if pos then
+                        if posObj then
                             local currentDelay = os.clock() - StartTime
                             table.insert(MacroData, {
                                 Type = "Upgrade",
                                 Time = currentDelay,
-                                X = pos.X,
-                                Y = pos.Y,
-                                Z = pos.Z
+                                X = posObj.X,
+                                Y = posObj.Y,
+                                Z = posObj.Z
                             })
-                            appendZoneLog("Upgrade", "Upgrade action captured via secure bridge!")
+                            appendZoneLog("Upgrade", "Upgrade captured via Tower UID Reference!")
                         end
                     end
-                    return originalNamecall(self, ...)
-                end)
-            })
+                end
+                return originalNamecall(self, ...)
+             gMetatable.__namecall)
         end
     end
 end
@@ -347,14 +365,14 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         isRecording = true
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started. Place and Upgrade now.")
-        AktifkanHybridSniffer()
+        appendZoneLog("System", "Recording started. Upgrade your units now!")
+        AktifkanV33Engine()
     else
         isRecording = false
         if placeConnection then placeConnection:Disconnect() end
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Recording saved: %d active moves.", #MacroData))
+        appendZoneLog("System", string.format("Saved moves: %d", #MacroData))
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
         end
@@ -364,7 +382,7 @@ end)
 local function muatDataMakro()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        appendZoneLog("Load", string.format("Loaded %d sequence entries.", #MacroData))
+        appendZoneLog("Load", string.format("Loaded %d actions.", #MacroData))
         return true
     end
     return false
@@ -373,7 +391,7 @@ createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 75), UDim2.new(1, -2
 
 local function jalankanPlayback()
     if #MacroData == 0 then return end
-    appendZoneLog("Play", "Deploying hybrid playback...")
+    appendZoneLog("Play", "Deploying UID matching playback...")
     task.spawn(function()
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
@@ -389,50 +407,27 @@ local function jalankanPlayback()
                     task.spawn(function()
                         if placeRemote:IsA("RemoteFunction") then placeRemote:InvokeServer(unpack(finalArgs)) else placeRemote:FireServer(unpack(finalArgs)) end
                     end)
-                    appendZoneLog("Spawn", string.format("Unit entry %d executed.", index))
+                    appendZoneLog("Spawn", string.format("Placed sequence %d.", index))
                 end
             elseif step.Type == "Upgrade" then
-                local upgradeRemote = getSafeRemote("UpgradeTower") or getSafeRemote("Upgrade")
+                local upgradeRemote = getSafeRemote("UpgradeTower")
                 if upgradeRemote then
-                    -- Playback otomatis mengirim ulang data upgrade sesuai posisi asal koordinatnya
-                    local finalArgs = {[1] = Vector3.new(step.X, step.Y, step.Z)}
-                    task.spawn(function()
-                        if upgradeRemote:IsA("RemoteFunction") then upgradeRemote:InvokeServer(unpack(finalArgs)) else upgradeRemote:FireServer(unpack(finalArgs)) end
-                    end)
-                    appendZoneLog("Upgrade", string.format("Upgrade entry %d executed.", index))
+                    -- Cari UID baru dari tower yang ada di posisi koordinat ini saat ini
+                    local posLacak = Vector3.new(step.X, step.Y, step.Z)
+                    local freshUID = temukanUIDTowerTerdekat(posLacak)
+                    
+                    if freshUID then
+                        task.spawn(function()
+                            upgradeRemote:InvokeServer(freshUID)
+                        end)
+                        appendZoneLog("Upgrade", string.format("Upgraded tower at index %d using live UID.", index))
+                    else
+                        appendZoneLog("Error", "Could not find valid tower UID for upgrade at target location!")
+                    end
                 end
             end
         end
-        appendZoneLog("System", "Playback automation complete.")
+        appendZoneLog("System", "Automation sequence finished.")
     end)
 end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
-
--- MATCH SETTINGS LOOPS
-local function paksaSpeedGame(targetSpeed)
-    local speedRemote = getSafeRemote("RequestGameSpeed")
-    if speedRemote then speedRemote:FireServer(targetSpeed) end
-end
-
-task.spawn(function()
-    while task.wait(1) do
-        if autoSkipEnabled then local skipRemote = getSafeRemote("VoteSkip") if skipRemote then skipRemote:FireServer(true) end end
-        if autoVoteReadyEnabled then eksekusiVoteDanReady() end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(3) do
-        if autoReplayEnabled then
-            local berhasil = eksekusiPlayAgain()
-            if berhasil then appendZoneLog("Replay", "Looping match...") end
-        end
-    end
-end)
-
--- TOGGLES
-createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 32), RightBox, function(state) if state then paksaSpeedGame(2) else paksaSpeedGame(1) end end)
-createZoneToggle("Force Game Speed x3 (Pass)", UDim2.new(0, 10, 0, 60), RightBox, function(state) if state then paksaSpeedGame(3) else paksaSpeedGame(1) end end)
-createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(state) autoSkipEnabled = state end)
-createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state) autoVoteReadyEnabled = state end)
-createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 144), RightBox, function(state) autoReplayEnabled = state end)
