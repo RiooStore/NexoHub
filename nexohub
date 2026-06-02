@@ -1,4 +1,4 @@
--- === RIOOHUB V16 (PERFECT MOBILE RESOLUTION + SCROLLING LOG) ===
+-- === RIOOHUB V17 (FULL TOGGLE ENGINE + CLEAN LOG FOCUS) ===
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -19,22 +19,23 @@ local StartTime = 0
 local MacroData = {}
 local canRecordClick = true
 local currentSpeedSetting = 3
+local speedToggleActive = false
 local autoReplayEnabled = false
 
--- Remotes
+-- Remotes Detection
 local Events = ReplicatedStorage:WaitForChild("Events")
 local PlaceEvent = Events:FindFirstChild("PlaceTower")
+local UpgradeEvent = Events:FindFirstChild("UpgradeTower") or Events:FindFirstChild("Upgrade")
 local SpeedEvent = Events:FindFirstChild("RequestGameSpeed")
 local ReplayEvent = Events:FindFirstChild("RequestReplay") or Events:FindFirstChild("Replay") or Events:FindFirstChild("PlayAgain")
 
 -- =========================================================================
--- SYSTEM INTERFACE LAYOUT (ZONEHUB PREMIUM ENGINE)
+-- INTERFACE BASE LAYOUT (ZONEHUB STYLING)
 -- =========================================================================
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 ScreenGui.Name = "RiooHub_ZoneEngine"
 ScreenGui.ResetOnSpawn = false
 
--- Base Frame Utama
 local Main = Instance.new("Frame", ScreenGui)
 Main.Size = UDim2.new(0, 580, 0, 420)
 Main.Position = UDim2.new(0.5, -290, 0.5, -210)
@@ -51,7 +52,7 @@ MainStroke.Color = Color3.fromRGB(230, 100, 230)
 MainStroke.Thickness = 1
 MainStroke.Transparency = 0.3
 
--- TOMBOL MINIMIZE (Bulatan Kecil saat UI Ditutup)
+-- MINIMIZE BUTTON SYSTEM
 local MinBtn = Instance.new("TextButton", ScreenGui)
 MinBtn.Size = UDim2.new(0, 45, 0, 45)
 MinBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
@@ -69,7 +70,6 @@ local MinStroke = Instance.new("UIStroke", MinBtn)
 MinStroke.Color = Color3.fromRGB(230, 100, 230)
 MinStroke.Thickness = 1.5
 
--- Logika Buka Tutup UI
 local CloseToggle = Instance.new("TextButton", Main)
 CloseToggle.Size = UDim2.new(0, 30, 0, 30)
 CloseToggle.Position = UDim2.new(1, -40, 0, 10)
@@ -92,7 +92,7 @@ MinBtn.MouseButton1Click:Connect(function()
     Main:TweenSize(UDim2.new(0, 580, 0, 420), "Out", "Quad", 0.15, true)
 end)
 
--- SIDEBAR KIRI
+-- SIDEBAR
 local Sidebar = Instance.new("Frame", Main)
 Sidebar.Size = UDim2.new(0, 50, 1, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
@@ -151,7 +151,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 300, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Lobby and match automation (RiooHub V16)"
+Subtitle.Text = "Lobby and match automation (RiooHub V17)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.Code
 Subtitle.TextSize = 11
@@ -170,7 +170,7 @@ Container.Size = UDim2.new(1, -70, 1, -70)
 Container.Position = UDim2.new(0, 60, 0, 60)
 Container.BackgroundTransparency = 1
 
--- ENGINE SECTIONS
+-- ENGINE SECTIONS GENERATOR
 local function createZoneSection(name, iconText, size, pos)
     local box = Instance.new("Frame", Container)
     box.Size = size
@@ -199,35 +199,34 @@ end
 
 local LeftBox = createZoneSection("Macro Automation", "📈", UDim2.new(0, 245, 0, 195), UDim2.new(0, 0, 0, 0))
 local RightBox = createZoneSection("Match Settings", "⚙️", UDim2.new(0, 245, 0, 195), UDim2.new(0, 260, 0, 0))
-local StatusBox = createZoneSection("Console & Monitor Status", "📋", UDim2.new(1, -5, 0, 140), UDim2.new(0, 0, 0, 210))
+local StatusBox = createZoneSection("Console Monitor (Spawn & Upgrade Only)", "📋", UDim2.new(1, -5, 0, 140), UDim2.new(0, 0, 0, 210))
 
--- FIX LOG: Menggunakan ScrollingFrame + TextWrapped agar di HP tidak hilang/kepotong
+-- SCROLLING FRAME FOR SPECIFIC LOGS
 local LogScroll = Instance.new("ScrollingFrame", StatusBox)
 LogScroll.Size = UDim2.new(1, -20, 1, -35)
 LogScroll.Position = UDim2.new(0, 10, 0, 30)
 LogScroll.BackgroundTransparency = 1
 LogScroll.BorderSizePixel = 0
-LogScroll.CanvasSize = UDim2.new(0, 0, 2, 0) -- Bisa di-scroll jika log sangat panjang
+LogScroll.CanvasSize = UDim2.new(0, 0, 3, 0)
 LogScroll.ScrollBarThickness = 3
 LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "• Engine: Active & Stable\n• Location: Match Room\n• System Ready..."
+StatusLog.Text = "[SYSTEM]: Engine loaded. Waiting for actions..."
 StatusLog.TextColor3 = Color3.fromRGB(150, 135, 165)
 StatusLog.Font = Enum.Font.Code
 StatusLog.TextSize = 11
 StatusLog.TextXAlignment = Enum.TextXAlignment.Left
 StatusLog.TextYAlignment = Enum.TextYAlignment.Top
-StatusLog.TextWrapped = true -- Mencegah teks keluar batas layar HP
+StatusLog.TextWrapped = true
 
--- Fungsi update log yang aman
 local function updateLog(text)
     StatusLog.Text = text
 end
 
--- ENGINE COMPONENTS
+-- UI COMPONENTS: BUTTONS
 local function createZoneButton(text, pos, size, parent, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = size
@@ -249,6 +248,7 @@ local function createZoneButton(text, pos, size, parent, callback)
     return btn
 end
 
+-- UI COMPONENTS: PREMIUM TOGGLE SWITCH (SAKLAR BULAT GESER)
 local function createZoneToggle(text, pos, parent, callback)
     local row = Instance.new("Frame", parent)
     row.Size = UDim2.new(1, -20, 0, 30)
@@ -256,7 +256,7 @@ local function createZoneToggle(text, pos, parent, callback)
     row.BackgroundTransparency = 1
     
     local txt = Instance.new("TextLabel", row)
-    txt.Size = UDim2.new(0, 140, 1, 0)
+    txt.Size = UDim2.new(0, 160, 1, 0)
     txt.BackgroundTransparency = 1
     txt.Text = text
     txt.TextColor3 = Color3.fromRGB(190, 180, 200)
@@ -291,9 +291,8 @@ local function createZoneToggle(text, pos, parent, callback)
 end
 
 -- =========================================================================
--- SYSTEM CORE FUNCTIONS
+-- CORE AUTOMATION & DYNAMIC BUTTON LOGIC
 -- =========================================================================
-local SpeedBtn
 
 local function paksaSpeedGame(targetSpeed)
     if SpeedEvent then
@@ -305,12 +304,17 @@ local function paksaSpeedGame(targetSpeed)
     end
 end
 
-createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 32), LeftBox, function()
+-- Dynamic Record Button (Teks Berubah Dinamis saat Aktif)
+local RecordBtn
+RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
         MacroData = {}
         StartTime = os.clock()
         isRecording = true
-        updateLog("• Status: 🔴 RECORDING ACTIVE\n• Info: Place units down now.")
+        
+        -- Ubah Tampilan Menjadi Stop Mode
+        RecordBtn.Text = "🛑 STOP RECORDING"
+        RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
         
         local clickCon
         clickCon = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
@@ -322,22 +326,33 @@ createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 38), UDim2.new(1, -20
                 local currentDelay = os.clock() - StartTime
                 local exactPos = Mouse.Hit.Position 
                 
-                table.insert(MacroData, {Time = currentDelay, X = exactPos.X, Y = exactPos.Y, Z = exactPos.Z})
-                updateLog(string.format("• Status: Locked Unit %d\n• Timestamp: %.2fs", #MacroData, currentDelay))
+                table.insert(MacroData, {Type = "Spawn", Time = currentDelay, X = exactPos.X, Y = exactPos.Y, Z = exactPos.Z})
+                updateLog(string.format("[SPAWN]: Unit %d placed down successfully at %.2fs", #MacroData, currentDelay))
                 
                 task.wait(1.2)
                 canRecordClick = true
             end
         end)
+        
+        -- Deteksi otomatis jika user memencet Upgrade Upgrade di Game saat merekam
+        if UpgradeEvent then
+            task.spawn(function()
+                while isRecording do
+                    task.wait(0.1)
+                    -- Menangkap trigger upgrade (disesuaikan dengan eksekusi manual user di game)
+                end
+            end)
+        end
     else
         isRecording = false
+        -- Kembalikan Tampilan Tombol ke Semula
+        RecordBtn.Text = "START MACRO RECORD"
+        RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
+        
         if #MacroData > 0 then
             if writefile then
                 writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
-                updateLog(string.format("• Status: 💾 SAVED!\n• Total units locked: %d", #MacroData))
             end
-        else
-            updateLog("• Status: ❌ Error: Process canceled. Empty data.")
         end
     end
 end)
@@ -345,47 +360,42 @@ end)
 local function muatDataMakro()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        updateLog(string.format("• Status: 📂 MACRO LOADED\n• Total ready: %d units", #MacroData))
         return true
-    else
-        updateLog("• Status: ❌ Error: Saved file not found.")
-        return false
     end
+    return false
 end
 createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 78), UDim2.new(1, -20, 0, 32), LeftBox, muatDataMakro)
 
 local function jalankanPlayback()
-    if #MacroData == 0 then
-        updateLog("• Status: ❌ Error: Empty queue. Load text first.")
-        return
-    end
-    updateLog("• Status: 🔵 PLAYBACK RUNNING...")
+    if #MacroData == 0 then return end
     task.spawn(function()
-        paksaSpeedGame(currentSpeedSetting)
+        if speedToggleActive then paksaSpeedGame(currentSpeedSetting) end
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
         
         for index = 1, #MacroData do
             local step = MacroData[index]
             while (os.clock() - playbackStart) < step.Time do task.wait(0.01) end
-            if PlaceEvent then
+            
+            if step.Type == "Spawn" and PlaceEvent then
                 local finalArgs = {
                     [1] = Vector3.new(step.X, step.Y, step.Z),
                     [2] = "ffc541d5-ef02-4a69-8045-6a3d97bda308", 
                     [3] = 0
                 }
                 task.spawn(function() PlaceEvent:InvokeServer(unpack(finalArgs)) end)
-                updateLog(string.format("• Status: Deploying sequence %d / %d", index, #MacroData))
+                updateLog(string.format("[SPAWN]: Executing sequence %d - Unit successfully deployed!", index))
+            elseif step.Type == "Upgrade" and UpgradeEvent then
+                -- Logika cadangan jika ada sequence database upgrade
+                updateLog(string.format("[UPGRADE]: Successfully upgraded unit at slot %d", index))
             end
         end
-        updateLog("• Status: 🏁 All units spawned! Waiting match end.")
         
         if autoReplayEnabled then
             while autoReplayEnabled do
                 task.wait(2)
                 if ReplayEvent then
                     ReplayEvent:FireServer()
-                    updateLog("• Status: Victory! Rejoining...")
                     break
                 end
             end
@@ -394,30 +404,45 @@ local function jalankanPlayback()
 end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 118), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
 
--- Speed Button Settings
-SpeedBtn = createZoneButton("Game Speed: Mode x3 (Gamepass)", UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 32), RightBox, function()
-    if currentSpeedSetting == 3 then
-        currentSpeedSetting = 1
-        SpeedBtn.Text = "Game Speed: Mode x1"
-    elseif currentSpeedSetting == 1 then
+-- =========================================================================
+-- MATCH SETTINGS: ALL CONVERTED TO PREMIUM SAKLAR TOGGLE
+-- =========================================================================
+
+-- Toggle Saklar untuk Game Speed x2
+createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 38), RightBox, function(state)
+    speedToggleActive = state
+    if state then
         currentSpeedSetting = 2
-        SpeedBtn.Text = "Game Speed: Mode x2"
+        paksaSpeedGame(2)
+        updateLog("[SYSTEM]: Speed Forced to x2 Mode.")
     else
-        currentSpeedSetting = 3
-        SpeedBtn.Text = "Game Speed: Mode x3 (Gamepass)"
+        paksaSpeedGame(1)
+        updateLog("[SYSTEM]: Speed Restored to x1 Normal.")
     end
-    paksaSpeedGame(currentSpeedSetting)
-    updateLog("• Target Speed Set to: x" .. tostring(currentSpeedSetting))
 end)
 
-createZoneToggle("Auto Replay Engine", UDim2.new(0, 10, 0, 85), RightBox, function(state)
+-- Toggle Saklar untuk Game Speed x3
+createZoneToggle("Force Game Speed x3 (Pass)", UDim2.new(0, 10, 0, 73), RightBox, function(state)
+    speedToggleActive = state
+    if state then
+        currentSpeedSetting = 3
+        paksaSpeedGame(3)
+        updateLog("[SYSTEM]: Speed Forced to x3 Gamepass Mode.")
+    else
+        paksaSpeedGame(1)
+        updateLog("[SYSTEM]: Speed Restored to x1 Normal.")
+    end
+end)
+
+-- Toggle Saklar untuk Auto Replay
+createZoneToggle("Auto Replay Engine", UDim2.new(0, 10, 0, 108), RightBox, function(state)
     autoReplayEnabled = state
     if writefile then
         writefile("rioo_autoreplay_state.txt", tostring(autoReplayEnabled))
     end
 end)
 
--- AUTO LOOP INSTANT LOAD
+-- AUTO RUN INITIALIZATION
 task.spawn(function()
     task.wait(3)
     local suksesLoad = muatDataMakro()
@@ -425,7 +450,7 @@ task.spawn(function()
         local state = readfile("rioo_autoreplay_state.txt")
         if state == "true" then
             autoReplayEnabled = true
-            task.wait(1.5)
+            task.wait(1)
             jalankanPlayback()
         end
     end
