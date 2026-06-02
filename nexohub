@@ -1,4 +1,4 @@
--- === RIOOHUB V21 (ANTI-CRASH FIX + FULL INTERFACE RESTORED) ===
+-- === RIOOHUB V23 (UNIVERSAL FONT COMPATIBILITY + FORCE RENDER FIXED) ===
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -24,19 +24,19 @@ local autoReplayEnabled = false
 local autoSkipEnabled = false
 local autoVoteReadyEnabled = false
 local targetDifficulty = "Easy"
-local LastDetectedUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308" -- Default fallback ID
+local LastDetectedUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
 
--- Remotes Binding (Safe Verification)
-local Events = ReplicatedStorage:WaitForChild("Events")
-local PlaceEvent = Events:FindFirstChild("PlaceTower")
-local SpeedEvent = Events:FindFirstChild("RequestGameSpeed")
-local ReplayEvent = Events:FindFirstChild("PlayAgain")
-local VoteDiffEvent = Events:FindFirstChild("VoteDifficulty")
-local ReadyEvent = Events:FindFirstChild("Ready")
-local SkipWaveEvent = Events:FindFirstChild("VoteSkip")
+-- SAFE REMOTE MANAGER
+local function getSafeRemote(remoteName)
+    local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+    if eventsFolder then
+        return eventsFolder:FindFirstChild(remoteName)
+    end
+    return nil
+end
 
 -- =========================================================================
--- INTERFACE BASE LAYOUT (ZONEHUB PREMIUM CYBERPUNK)
+-- INTERFACE BASE LAYOUT (ROBLOX 2026 SAFE FONTS)
 -- =========================================================================
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 ScreenGui.Name = "RiooHub_ZoneEngine"
@@ -65,7 +65,7 @@ MinBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
 MinBtn.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
 MinBtn.Text = "Z"
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Font = Enum.Font.FredokaOne
+MinBtn.Font = Enum.Font.GothamBold -- Safe Font Replacement
 MinBtn.TextSize = 20
 MinBtn.Visible = false
 MinBtn.Active = true
@@ -124,7 +124,7 @@ LogoText.Size = UDim2.new(1, 0, 1, 0)
 LogoText.BackgroundTransparency = 1
 LogoText.Text = "Z"
 LogoText.TextColor3 = Color3.fromRGB(255, 255, 255)
-LogoText.Font = Enum.Font.FredokaOne
+LogoText.Font = Enum.Font.GothamBold
 LogoText.TextSize = 18
 
 -- TOPBAR
@@ -139,7 +139,7 @@ Title.Position = UDim2.new(0, 15, 0, 8)
 Title.BackgroundTransparency = 1
 Title.Text = "Main Engine"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.Code
+Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
@@ -147,10 +147,10 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V21)"
+Subtitle.Text = "Full AFK Automation (RiooHub V23)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
-Subtitle.Font = Enum.Font.Code
-Subtitle.TextSize = 11
+Subtitle.Font = Enum.Font.SourceSans
+Subtitle.TextSize = 12
 Subtitle.TextXAlignment = Enum.TextXAlignment.Left
 
 local Container = Instance.new("Frame", Main)
@@ -178,8 +178,8 @@ local function createZoneSection(name, iconText, size, pos)
     titleLbl.BackgroundTransparency = 1
     titleLbl.Text = iconText .. "  " .. name
     titleLbl.TextColor3 = Color3.fromRGB(240, 220, 255)
-    titleLbl.Font = Enum.Font.Code
-    titleLbl.TextSize = 12
+    titleLbl.Font = Enum.Font.GothamBold
+    titleLbl.TextSize = 11
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left
     
     return box
@@ -202,10 +202,10 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: Core active. UI safely generated. Ready to build!"
+StatusLog.Text = "[SYSTEM]: Core isolated. Standard fonts armed. UI rendering complete!"
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
-StatusLog.Font = Enum.Font.Code
-StatusLog.TextSize = 11
+StatusLog.Font = Enum.Font.SourceSans
+StatusLog.TextSize = 12
 StatusLog.TextXAlignment = Enum.TextXAlignment.Left
 StatusLog.TextYAlignment = Enum.TextYAlignment.Top
 StatusLog.TextWrapped = true
@@ -224,7 +224,7 @@ local function createZoneButton(text, pos, size, parent, callback)
     btn.BackgroundColor3 = Color3.fromRGB(26, 18, 42)
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(240, 240, 240)
-    btn.Font = Enum.Font.Code
+    btn.Font = Enum.Font.GothamBold
     btn.TextSize = 11
     btn.BorderSizePixel = 0
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
@@ -250,8 +250,8 @@ local function createZoneToggle(text, pos, parent, callback)
     txt.BackgroundTransparency = 1
     txt.Text = text
     txt.TextColor3 = Color3.fromRGB(190, 180, 200)
-    txt.Font = Enum.Font.Code
-    txt.TextSize = 11
+    txt.Font = Enum.Font.SourceSans
+    txt.TextSize = 13
     txt.TextXAlignment = Enum.TextXAlignment.Left
     
     local switch = Instance.new("TextButton", row)
@@ -285,11 +285,12 @@ end
 -- =========================================================================
 
 local function paksaSpeedGame(targetSpeed)
-    if SpeedEvent then
+    local speedRemote = getSafeRemote("RequestGameSpeed")
+    if speedRemote then
         task.spawn(function()
-            SpeedEvent:FireServer(targetSpeed)
+            speedRemote:FireServer(targetSpeed)
             task.wait(0.15)
-            SpeedEvent:FireServer(targetSpeed)
+            speedRemote:FireServer(targetSpeed)
         end)
     end
 end
@@ -297,13 +298,16 @@ end
 -- Auto Skip Engine Loop
 task.spawn(function()
     while task.wait(1) do
-        if autoSkipEnabled and SkipWaveEvent then
-            SkipWaveEvent:FireServer(true)
+        if autoSkipEnabled then
+            local skipRemote = getSafeRemote("VoteSkip")
+            if skipRemote then
+                skipRemote:FireServer(true)
+            end
         end
     end
 end)
 
--- Smart Recording Button (SAFE RE-ENGINEERED)
+-- Smart Recording Button
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
@@ -313,7 +317,7 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started. Coordinates listening mode armed.")
+        appendZoneLog("System", "Recording started.")
         
         local clickCon
         clickCon = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
@@ -325,9 +329,8 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
                 local currentDelay = os.clock() - StartTime
                 local exactPos = Mouse.Hit.Position 
                 
-                -- Menyimpan murni koordinat secara aman tanpa merusak remote internal game
                 table.insert(MacroData, {Type = "Spawn", Time = currentDelay, X = exactPos.X, Y = exactPos.Y, Z = exactPos.Z, SavedUID = LastDetectedUID})
-                appendZoneLog("Spawn", "Position buffered successfully.")
+                appendZoneLog("Spawn", "Position buffered.")
                 
                 task.wait(1.2)
                 canRecordClick = true
@@ -337,7 +340,7 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         isRecording = false
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Recording saved! Total sequences: %d", #MacroData))
+        appendZoneLog("System", string.format("Recording saved! Sequences: %d", #MacroData))
         
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
@@ -363,16 +366,17 @@ local function jalankanPlayback()
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
         
-        -- FIRING GABUNGAN: VOTE DIFFICULTY + AUTO READY INSTAN
         if autoVoteReadyEnabled then
-            if VoteDiffEvent then
-                VoteDiffEvent:FireServer(targetDifficulty)
-                appendZoneLog("Vote", "Difficulty auto-selected: " .. targetDifficulty)
+            local voteRemote = getSafeRemote("VoteDifficulty")
+            if voteRemote then
+                voteRemote:FireServer(targetDifficulty)
+                appendZoneLog("Vote", "Difficulty selected: " .. targetDifficulty)
             end
             task.wait(0.5) 
-            if ReadyEvent then
-                ReadyEvent:FireServer()
-                appendZoneLog("Ready", "State forced to READY successfully.")
+            local readyRemote = getSafeRemote("Ready")
+            if readyRemote then
+                readyRemote:FireServer()
+                appendZoneLog("Ready", "State forced to READY.")
             end
         end
         
@@ -381,24 +385,26 @@ local function jalankanPlayback()
             local adjustedTime = speedToggleActive and (step.Time / 1.5) or step.Time
             while (os.clock() - playbackStart) < adjustedTime do task.wait(0.01) end
             
-            if step.Type == "Spawn" and PlaceEvent then
+            local placeRemote = getSafeRemote("PlaceTower")
+            if step.Type == "Spawn" and placeRemote then
                 local finalArgs = {
                     [1] = Vector3.new(step.X, step.Y, step.Z),
                     [2] = step.SavedUID or LastDetectedUID, 
                     [3] = 0
                 }
-                task.spawn(function() PlaceEvent:InvokeServer(unpack(finalArgs)) end)
+                task.spawn(function() placeRemote:InvokeServer(unpack(finalArgs)) end)
                 appendZoneLog("Spawn", string.format("Sequence %d injected.", index))
             end
         end
         
-        appendZoneLog("System", "All sequences deployed. Keeping loop alive.")
+        appendZoneLog("System", "All sequences deployed.")
         
         if autoReplayEnabled then
             while autoReplayEnabled do
                 task.wait(4)
-                if ReplayEvent then
-                    ReplayEvent:FireServer()
+                local replayRemote = getSafeRemote("PlayAgain")
+                if replayRemote then
+                    replayRemote:FireServer()
                     appendZoneLog("Replay", "Executing PlayAgain remote!")
                     break
                 end
@@ -409,7 +415,7 @@ end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
 
 -- =========================================================================
--- MATCH SETTINGS (ALL INTERLOCKED SAKLAR TOGGLES)
+-- MATCH SETTINGS (SAFE RENDERING SAKLAR)
 -- =========================================================================
 
 createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 32), RightBox, function(state)
