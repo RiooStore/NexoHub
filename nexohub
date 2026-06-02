@@ -1,18 +1,18 @@
--- === RIOOHUB V29 (ULTRA DEFEND CORE - COREGUI FALLBACK & ANTI CRASH) ===
+-- === RIOOHUB V30 (REAL-TIME INSTANCE SNIFFER - PLACE & UPGRADE ONLY) ===
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
+local Workspace = game:GetService("Workspace")
 
 -- WAITING ENGINE (Memastikan game sudah siap 100%)
 if not Players.LocalPlayer then
     Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
 end
 local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
 
--- Penentuan lokasi UI paling aman (Prioritas CoreGui biar anti-bug/anti-reset)
+-- Penentuan lokasi UI paling aman
 local TargetGuiParent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
 if PlayerGui then TargetGuiParent = PlayerGui end
@@ -37,6 +37,9 @@ local targetDifficulty = "Easy"
 -- Fallback UID Unit Utama
 local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
 
+-- Cari folder tempat unit ditaruh di game lu (Workspace biasanya punya folder Towers/Units/Placements)
+local TowerFolder = Workspace:FindFirstChild("Towers") or Workspace:FindFirstChild("Units") or Workspace:FindFirstChild("PlacedTowers") or Workspace
+
 -- SAFE REMOTE MANAGER
 local function getSafeRemote(remoteName)
     local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes")
@@ -46,24 +49,22 @@ local function getSafeRemote(remoteName)
     return nil
 end
 
--- TRACKER SLOT UNIT (Menggunakan sistem pengaman pcall penuh)
+-- TRACKER SLOT UNIT (Mencari ID unit aktif di saku)
 task.spawn(function()
-    while task.wait(0.5) do
-        if isRecording then
-            pcall(function()
-                local dataFolder = ReplicatedStorage:FindFirstChild("Sessions") or ReplicatedStorage:FindFirstChild("PlayerData")
-                if dataFolder and dataFolder:FindFirstChild(LocalPlayer.Name) then
-                    local equipped = dataFolder[LocalPlayer.Name]:FindFirstChild("Equipped") or dataFolder[LocalPlayer.Name]:FindFirstChild("Slots")
-                    if equipped then
-                        for _, slot in pairs(equipped:GetChildren()) do
-                            if slot:IsA("StringValue") and slot.Value ~= "" then
-                                LastSelectedUnitUID = slot.Value
-                            end
+    while task.wait(0.3) do
+        pcall(function()
+            local dataFolder = ReplicatedStorage:FindFirstChild("Sessions") or ReplicatedStorage:FindFirstChild("PlayerData")
+            if dataFolder and dataFolder:FindFirstChild(LocalPlayer.Name) then
+                local equipped = dataFolder[LocalPlayer.Name]:FindFirstChild("Equipped") or dataFolder[LocalPlayer.Name]:FindFirstChild("Slots")
+                if equipped then
+                    for _, slot in pairs(equipped:GetChildren()) do
+                        if slot:IsA("StringValue") and slot.Value ~= "" then
+                            LastSelectedUnitUID = slot.Value
                         end
                     end
                 end
-            end)
-        end
+            end
+        end)
     end
 end)
 
@@ -86,7 +87,7 @@ local function eksekusiVoteDanReady()
 end
 
 -- =========================================================================
--- INTERFACE LAYOUT (SISTEM CORNERING AMAN)
+-- INTERFACE LAYOUT
 -- =========================================================================
 local ScreenGui = Instance.new("ScreenGui", TargetGuiParent)
 ScreenGui.Name = "RiooHub_ZoneEngine"
@@ -150,13 +151,6 @@ Sidebar.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
 Sidebar.BorderSizePixel = 0
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
 
-local SidebarLine = Instance.new("Frame", Main)
-SidebarLine.Size = UDim2.new(0, 1, 1, 0)
-SidebarLine.Position = UDim2.new(0, 50, 0, 0)
-SidebarLine.BackgroundColor3 = Color3.fromRGB(230, 100, 230)
-SidebarLine.BorderSizePixel = 0
-SidebarLine.BackgroundTransparency = 0.7
-
 -- TOPBAR
 local Topbar = Instance.new("Frame", Main)
 Topbar.Size = UDim2.new(1, -50, 0, 50)
@@ -177,7 +171,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V29)"
+Subtitle.Text = "Full AFK Automation (RiooHub V30)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -195,11 +189,6 @@ local function createZoneSection(name, iconText, size, pos)
     box.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
     box.BorderSizePixel = 0
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-    
-    local stk = Instance.new("UIStroke", box)
-    stk.Color = Color3.fromRGB(230, 100, 230)
-    stk.Thickness = 0.8
-    stk.Transparency = 0.6
     
     local titleLbl = Instance.new("TextLabel", box)
     titleLbl.Size = UDim2.new(1, -10, 0, 25)
@@ -222,7 +211,6 @@ local LogScroll = Instance.new("ScrollingFrame", StatusBox)
 LogScroll.Size = UDim2.new(1, -20, 1, -35)
 LogScroll.Position = UDim2.new(0, 10, 0, 30)
 LogScroll.BackgroundTransparency = 1
-LogScroll.BorderSizePixel = 0
 LogScroll.CanvasSize = UDim2.new(0, 0, 4, 0)
 LogScroll.ScrollBarThickness = 3
 LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
@@ -230,7 +218,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: RiooHub V29 Injector loaded. Secure Environment Active."
+StatusLog.Text = "[SYSTEM]: RiooHub V30 Sniffer Active. Ready to filter macros."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -254,12 +242,6 @@ local function createZoneButton(text, pos, size, parent, callback)
     btn.TextSize = 11
     btn.BorderSizePixel = 0
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
-    
-    local bstk = Instance.new("UIStroke", btn)
-    bstk.Color = Color3.fromRGB(230, 100, 230)
-    bstk.Thickness = 0.8
-    bstk.Transparency = 0.5
-    
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
@@ -297,88 +279,84 @@ local function createZoneToggle(text, pos, parent, callback)
         active = not active
         local targetPos = active and UDim2.new(1, -13, 0, 3) or UDim2.new(0, 3, 0, 3)
         local targetColor = active and Color3.fromRGB(230, 100, 230) or Color3.fromRGB(45, 33, 62)
-        
         TweenService:Create(circle, TweenInfo.new(0.12), {Position = targetPos}):Play()
         TweenService:Create(switch, TweenInfo.new(0.12), {BackgroundColor3 = targetColor}):Play()
-        
         callback(active)
     end)
 end
 
--- LOOPS MANAGEMENT
-local function paksaSpeedGame(targetSpeed)
-    local speedRemote = getSafeRemote("RequestGameSpeed")
-    if speedRemote then
-        task.spawn(function()
-            speedRemote:FireServer(targetSpeed)
-            task.wait(0.15)
-            speedRemote:FireServer(targetSpeed)
+-- =========================================================================
+-- DETEKSI MAP REAL-TIME (HANYA DETEKSI COOLDOWN & PLACEMENT ASLI)
+-- =========================================================================
+local recordConnection
+
+local function MulaiDeteksiRealtime()
+    if TowerFolder then
+        recordConnection = TowerFolder.ChildAdded:Connect(function(child)
+            if not isRecording then return end
+            
+            -- Memastikan unit itu milik lu (punya tag nama lu atau dibuat oleh lu)
+            task.wait(0.1) -- nunggu info unit ke-load sebentar di map
+            local ownerCheck = child:FindFirstChild("Owner") or child:FindFirstChild("Player")
+            if ownerCheck and ownerCheck.Value ~= LocalPlayer.Name then return end
+            
+            local primaryPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+            if primaryPart then
+                local currentDelay = os.clock() - StartTime
+                local pos = primaryPart.Position
+                
+                table.insert(MacroData, {
+                    Type = "Spawn",
+                    Time = currentDelay,
+                    X = pos.X,
+                    Y = pos.Y,
+                    Z = pos.Z,
+                    SavedUID = LastSelectedUnitUID
+                })
+                appendZoneLog("Place", "Tower placement captured natively at Workspace!")
+            end
+            
+            -- Pantau UPGRADE dari level unit ini secara real-time
+            local levelObj = child:FindFirstChild("Level") or child:FindFirstChild("Upgrade")
+            if levelObj then
+                levelObj.Changed:Connect(function(newVal)
+                    if isRecording then
+                        local currentDelay = os.clock() - StartTime
+                        local primaryPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+                        if primaryPart then
+                            table.insert(MacroData, {
+                                Type = "Upgrade",
+                                Time = currentDelay,
+                                X = primaryPart.Position.X,
+                                Y = primaryPart.Position.Y,
+                                Z = primaryPart.Position.Z
+                            })
+                            appendZoneLog("Upgrade", "Tower upgrade sequence captured!")
+                        end
+                    end
+                end)
+            end
         end)
     end
 end
 
-task.spawn(function()
-    while task.wait(1) do
-        if autoSkipEnabled then
-            local skipRemote = getSafeRemote("VoteSkip")
-            if skipRemote then skipRemote:FireServer(true) end
-        end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(1.5) do
-        if autoVoteReadyEnabled then eksekusiVoteDanReady() end
-    end
-end)
-
-task.spawn(function()
-    while task.wait(3) do
-        if autoReplayEnabled then
-            local berhasil = eksekusiPlayAgain()
-            if berhasil then appendZoneLog("Replay", "Spamming PlayAgain remote...") end
-        end
-    end
-end)
-
--- INTERACTIVE RECORDER BUTTON
+-- BUTTON CONFIGS
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
         MacroData = {}
         StartTime = os.clock()
         isRecording = true
-        
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording active. Place your units.")
-        
-        local recordConnection
-        recordConnection = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
-            if not isRecording then recordConnection:Disconnect() return end
-            if processed then return end
-            
-            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                local currentDelay = os.clock() - StartTime
-                local targetPos = Mouse.Hit.Position
-                
-                table.insert(MacroData, {
-                    Type = "Spawn",
-                    Time = currentDelay,
-                    X = targetPos.X,
-                    Y = targetPos.Y,
-                    Z = targetPos.Z,
-                    SavedUID = LastSelectedUnitUID
-                })
-                appendZoneLog("Spawn", "Buffered position.")
-            end
-        end)
+        appendZoneLog("System", "Recording started. Go place/upgrade towers normally.")
+        MulaiDeteksiRealtime()
     else
         isRecording = false
+        if recordConnection then recordConnection:Disconnect() end
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Saved sequences: %d", #MacroData))
-        
+        appendZoneLog("System", string.format("Recording saved: %d active moves.", #MacroData))
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
         end
@@ -388,7 +366,7 @@ end)
 local function muatDataMakro()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        appendZoneLog("Load", string.format("Loaded macro file (%d slots armed).", #MacroData))
+        appendZoneLog("Load", string.format("Loaded %d sequence entries.", #MacroData))
         return true
     end
     return false
@@ -397,75 +375,66 @@ createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 75), UDim2.new(1, -2
 
 local function jalankanPlayback()
     if #MacroData == 0 then return end
-    appendZoneLog("Play", "Running playback injection...")
+    appendZoneLog("Play", "Deploying playback macros...")
     task.spawn(function()
-        if speedToggleActive then paksaSpeedGame(currentSpeedSetting) end
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
         
         for index = 1, #MacroData do
             local step = MacroData[index]
-            local adjustedTime = speedToggleActive and (step.Time / 1.5) or step.Time
-            while (os.clock() - playbackStart) < adjustedTime do task.wait(0.01) end
+            while (os.clock() - playbackStart) < step.Time do task.wait(0.01) end
             
-            local placeRemote = getSafeRemote("PlaceTower")
-            if step.Type == "Spawn" and placeRemote and step.SavedUID then
-                local finalArgs = {
-                    [1] = Vector3.new(step.X, step.Y, step.Z),
-                    [2] = step.SavedUID,
-                    [3] = 0
-                }
-                task.spawn(function() 
-                    if placeRemote:IsA("RemoteFunction") then
-                        placeRemote:InvokeServer(unpack(finalArgs))
-                    else
-                        placeRemote:FireServer(unpack(finalArgs))
-                    end
-                end)
-                appendZoneLog("Spawn", string.format("Sequence %d injected.", index))
+            if step.Type == "Spawn" then
+                local placeRemote = getSafeRemote("PlaceTower") or getSafeRemote("Place")
+                if placeRemote then
+                    local finalArgs = {[1] = Vector3.new(step.X, step.Y, step.Z), [2] = step.SavedUID, [3] = 0}
+                    task.spawn(function()
+                        if placeRemote:IsA("RemoteFunction") then placeRemote:InvokeServer(unpack(finalArgs)) else placeRemote:FireServer(unpack(finalArgs)) end
+                    end)
+                    appendZoneLog("Spawn", string.format("Unit entry %d executed.", index))
+                end
+            elseif step.Type == "Upgrade" then
+                local upgradeRemote = getSafeRemote("UpgradeTower") or getSafeRemote("Upgrade")
+                if upgradeRemote then
+                    -- Cari koordinat tower terdekat untuk di-upgrade otomatis
+                    local finalArgs = {[1] = Vector3.new(step.X, step.Y, step.Z)}
+                    task.spawn(function()
+                        if upgradeRemote:IsA("RemoteFunction") then upgradeRemote:InvokeServer(unpack(finalArgs)) else upgradeRemote:FireServer(unpack(finalArgs)) end
+                    end)
+                    appendZoneLog("Upgrade", string.format("Upgrade entry %d executed.", index))
+                end
             end
         end
-        appendZoneLog("System", "All sequences deployed.")
+        appendZoneLog("System", "Playback automation complete.")
     end)
 end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
 
--- MATCH SETTINGS
-createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 32), RightBox, function(state)
-    speedToggleActive = state
-    if state then currentSpeedSetting = 2; paksaSpeedGame(2) else paksaSpeedGame(1) end
-end)
+-- MATCH SETTINGS LOOPS
+local function paksaSpeedGame(targetSpeed)
+    local speedRemote = getSafeRemote("RequestGameSpeed")
+    if speedRemote then speedRemote:FireServer(targetSpeed) end
+end
 
-createZoneToggle("Force Game Speed x3 (Pass)", UDim2.new(0, 10, 0, 60), RightBox, function(state)
-    speedToggleActive = state
-    if state then currentSpeedSetting = 3; paksaSpeedGame(3) else paksaSpeedGame(1) end
-end)
-
-createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(state)
-    autoSkipEnabled = state
-end)
-
-createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state)
-    autoVoteReadyEnabled = state
-    if state then eksekusiVoteDanReady() end
-end)
-
-createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 144), RightBox, function(state)
-    autoReplayEnabled = state
-    if state then eksekusiPlayAgain() end
-    if writefile then writefile("rioo_autoreplay_state.txt", tostring(autoReplayEnabled)) end
-end)
-
--- AUTO RUN HOOK
 task.spawn(function()
-    task.wait(2)
-    local suksesLoad = muatDataMakro()
-    if suksesLoad and isfile and isfile("rioo_autoreplay_state.txt") then
-        local state = readfile("rioo_autoreplay_state.txt")
-        if state == "true" then
-            autoReplayEnabled = true
-            task.wait(1)
-            jalankanPlayback()
+    while task.wait(1) do
+        if autoSkipEnabled then local skipRemote = getSafeRemote("VoteSkip") if skipRemote then skipRemote:FireServer(true) end end
+        if autoVoteReadyEnabled then eksekusiVoteDanReady() end
+    end
+end)
+
+task.spawn(function()
+    while task.wait(3) do
+        if autoReplayEnabled then
+            local berhasil = eksekusiPlayAgain()
+            if berhasil then appendZoneLog("Replay", "Looping match...") end
         end
     end
 end)
+
+-- TOGGLES
+createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 32), RightBox, function(state) if state then paksaSpeedGame(2) else paksaSpeedGame(1) end end)
+createZoneToggle("Force Game Speed x3 (Pass)", UDim2.new(0, 10, 0, 60), RightBox, function(state) if state then paksaSpeedGame(3) else paksaSpeedGame(1) end end)
+createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(state) autoSkipEnabled = state end)
+createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state) autoVoteReadyEnabled = state end)
+createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 144), RightBox, function(state) autoReplayEnabled = state end)
