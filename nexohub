@@ -1,0 +1,432 @@
+-- === RIOOHUB V16 (PERFECT MOBILE RESOLUTION + SCROLLING LOG) ===
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
+
+-- Anti Double UI
+if PlayerGui:FindFirstChild("RiooHub_ZoneEngine") then 
+    PlayerGui.RiooHub_ZoneEngine:Destroy() 
+end
+
+-- Core Config
+local FILE_NAME = "rioo_precise_macro.txt"
+local isRecording = false
+local StartTime = 0
+local MacroData = {}
+local canRecordClick = true
+local currentSpeedSetting = 3
+local autoReplayEnabled = false
+
+-- Remotes
+local Events = ReplicatedStorage:WaitForChild("Events")
+local PlaceEvent = Events:FindFirstChild("PlaceTower")
+local SpeedEvent = Events:FindFirstChild("RequestGameSpeed")
+local ReplayEvent = Events:FindFirstChild("RequestReplay") or Events:FindFirstChild("Replay") or Events:FindFirstChild("PlayAgain")
+
+-- =========================================================================
+-- SYSTEM INTERFACE LAYOUT (ZONEHUB PREMIUM ENGINE)
+-- =========================================================================
+local ScreenGui = Instance.new("ScreenGui", PlayerGui)
+ScreenGui.Name = "RiooHub_ZoneEngine"
+ScreenGui.ResetOnSpawn = false
+
+-- Base Frame Utama
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 580, 0, 420)
+Main.Position = UDim2.new(0.5, -290, 0.5, -210)
+Main.BackgroundColor3 = Color3.fromRGB(15, 11, 25)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+
+local MainCorner = Instance.new("UICorner", Main)
+MainCorner.CornerRadius = UDim.new(0, 10)
+
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = Color3.fromRGB(230, 100, 230)
+MainStroke.Thickness = 1
+MainStroke.Transparency = 0.3
+
+-- TOMBOL MINIMIZE (Bulatan Kecil saat UI Ditutup)
+local MinBtn = Instance.new("TextButton", ScreenGui)
+MinBtn.Size = UDim2.new(0, 45, 0, 45)
+MinBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
+MinBtn.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
+MinBtn.Text = "Z"
+MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinBtn.Font = Enum.Font.FredokaOne
+MinBtn.TextSize = 20
+MinBtn.Visible = false
+MinBtn.Active = true
+MinBtn.Draggable = true
+
+Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(1, 0)
+local MinStroke = Instance.new("UIStroke", MinBtn)
+MinStroke.Color = Color3.fromRGB(230, 100, 230)
+MinStroke.Thickness = 1.5
+
+-- Logika Buka Tutup UI
+local CloseToggle = Instance.new("TextButton", Main)
+CloseToggle.Size = UDim2.new(0, 30, 0, 30)
+CloseToggle.Position = UDim2.new(1, -40, 0, 10)
+CloseToggle.BackgroundTransparency = 1
+CloseToggle.Text = "—"
+CloseToggle.TextColor3 = Color3.fromRGB(230, 100, 230)
+CloseToggle.Font = Enum.Font.GothamBold
+CloseToggle.TextSize = 16
+
+CloseToggle.MouseButton1Click:Connect(function()
+    Main:TweenSize(UDim2.new(0, 0, 0, 0), "Out", "Quad", 0.15, true, function()
+        Main.Visible = false
+        MinBtn.Visible = true
+    end)
+end)
+
+MinBtn.MouseButton1Click:Connect(function()
+    MinBtn.Visible = false
+    Main.Visible = true
+    Main:TweenSize(UDim2.new(0, 580, 0, 420), "Out", "Quad", 0.15, true)
+end)
+
+-- SIDEBAR KIRI
+local Sidebar = Instance.new("Frame", Main)
+Sidebar.Size = UDim2.new(0, 50, 1, 0)
+Sidebar.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
+Sidebar.BorderSizePixel = 0
+Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
+
+local SidebarLine = Instance.new("Frame", Main)
+SidebarLine.Size = UDim2.new(0, 1, 1, 0)
+SidebarLine.Position = UDim2.new(0, 50, 0, 0)
+SidebarLine.BackgroundColor3 = Color3.fromRGB(230, 100, 230)
+SidebarLine.BorderSizePixel = 0
+SidebarLine.BackgroundTransparency = 0.7
+
+local LogoBg = Instance.new("Frame", Sidebar)
+LogoBg.Size = UDim2.new(0, 34, 0, 34)
+LogoBg.Position = UDim2.new(0.5, -17, 0, 12)
+LogoBg.BackgroundColor3 = Color3.fromRGB(25, 16, 40)
+LogoBg.BorderSizePixel = 0
+Instance.new("UICorner", LogoBg).CornerRadius = UDim.new(1, 0)
+local LogoStroke = Instance.new("UIStroke", LogoBg)
+LogoStroke.Color = Color3.fromRGB(230, 100, 230)
+LogoStroke.Thickness = 1.5
+
+local LogoText = Instance.new("TextLabel", LogoBg)
+LogoText.Size = UDim2.new(1, 0, 1, 0)
+LogoText.BackgroundTransparency = 1
+LogoText.Text = "Z"
+LogoText.TextColor3 = Color3.fromRGB(255, 255, 255)
+LogoText.Font = Enum.Font.FredokaOne
+LogoText.TextSize = 18
+
+local BotIcon = Instance.new("TextLabel", Sidebar)
+BotIcon.Size = UDim2.new(1, 0, 0, 40)
+BotIcon.Position = UDim2.new(0, 0, 0, 60)
+BotIcon.BackgroundTransparency = 1
+BotIcon.Text = "🤖"
+BotIcon.TextSize = 18
+
+-- TOPBAR
+local Topbar = Instance.new("Frame", Main)
+Topbar.Size = UDim2.new(1, -50, 0, 50)
+Topbar.Position = UDim2.new(0, 50, 0, 0)
+Topbar.BackgroundTransparency = 1
+
+local Title = Instance.new("TextLabel", Topbar)
+Title.Size = UDim2.new(0, 200, 0, 25)
+Title.Position = UDim2.new(0, 15, 0, 8)
+Title.BackgroundTransparency = 1
+Title.Text = "Main"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.Font = Enum.Font.Code
+Title.TextSize = 14
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+local Subtitle = Instance.new("TextLabel", Topbar)
+Subtitle.Size = UDim2.new(0, 300, 0, 15)
+Subtitle.Position = UDim2.new(0, 15, 0, 26)
+Subtitle.BackgroundTransparency = 1
+Subtitle.Text = "Lobby and match automation (RiooHub V16)"
+Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
+Subtitle.Font = Enum.Font.Code
+Subtitle.TextSize = 11
+Subtitle.TextXAlignment = Enum.TextXAlignment.Left
+
+local TopbarLine = Instance.new("Frame", Main)
+TopbarLine.Size = UDim2.new(1, -50, 0, 1)
+TopbarLine.Position = UDim2.new(0, 50, 0, 50)
+TopbarLine.BackgroundColor3 = Color3.fromRGB(230, 100, 230)
+TopbarLine.BorderSizePixel = 0
+TopbarLine.BackgroundTransparency = 0.7
+
+-- CONTAINER GRID
+local Container = Instance.new("Frame", Main)
+Container.Size = UDim2.new(1, -70, 1, -70)
+Container.Position = UDim2.new(0, 60, 0, 60)
+Container.BackgroundTransparency = 1
+
+-- ENGINE SECTIONS
+local function createZoneSection(name, iconText, size, pos)
+    local box = Instance.new("Frame", Container)
+    box.Size = size
+    box.Position = pos
+    box.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
+    box.BorderSizePixel = 0
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+    
+    local stk = Instance.new("UIStroke", box)
+    stk.Color = Color3.fromRGB(230, 100, 230)
+    stk.Thickness = 0.8
+    stk.Transparency = 0.6
+    
+    local titleLbl = Instance.new("TextLabel", box)
+    titleLbl.Size = UDim2.new(1, -10, 0, 25)
+    titleLbl.Position = UDim2.new(0, 10, 0, 4)
+    titleLbl.BackgroundTransparency = 1
+    titleLbl.Text = iconText .. "  " .. name
+    titleLbl.TextColor3 = Color3.fromRGB(240, 220, 255)
+    titleLbl.Font = Enum.Font.Code
+    titleLbl.TextSize = 12
+    titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+    
+    return box
+end
+
+local LeftBox = createZoneSection("Macro Automation", "📈", UDim2.new(0, 245, 0, 195), UDim2.new(0, 0, 0, 0))
+local RightBox = createZoneSection("Match Settings", "⚙️", UDim2.new(0, 245, 0, 195), UDim2.new(0, 260, 0, 0))
+local StatusBox = createZoneSection("Console & Monitor Status", "📋", UDim2.new(1, -5, 0, 140), UDim2.new(0, 0, 0, 210))
+
+-- FIX LOG: Menggunakan ScrollingFrame + TextWrapped agar di HP tidak hilang/kepotong
+local LogScroll = Instance.new("ScrollingFrame", StatusBox)
+LogScroll.Size = UDim2.new(1, -20, 1, -35)
+LogScroll.Position = UDim2.new(0, 10, 0, 30)
+LogScroll.BackgroundTransparency = 1
+LogScroll.BorderSizePixel = 0
+LogScroll.CanvasSize = UDim2.new(0, 0, 2, 0) -- Bisa di-scroll jika log sangat panjang
+LogScroll.ScrollBarThickness = 3
+LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
+
+local StatusLog = Instance.new("TextLabel", LogScroll)
+StatusLog.Size = UDim2.new(1, 0, 1, 0)
+StatusLog.BackgroundTransparency = 1
+StatusLog.Text = "• Engine: Active & Stable\n• Location: Match Room\n• System Ready..."
+StatusLog.TextColor3 = Color3.fromRGB(150, 135, 165)
+StatusLog.Font = Enum.Font.Code
+StatusLog.TextSize = 11
+StatusLog.TextXAlignment = Enum.TextXAlignment.Left
+StatusLog.TextYAlignment = Enum.TextYAlignment.Top
+StatusLog.TextWrapped = true -- Mencegah teks keluar batas layar HP
+
+-- Fungsi update log yang aman
+local function updateLog(text)
+    StatusLog.Text = text
+end
+
+-- ENGINE COMPONENTS
+local function createZoneButton(text, pos, size, parent, callback)
+    local btn = Instance.new("TextButton", parent)
+    btn.Size = size
+    btn.Position = pos
+    btn.BackgroundColor3 = Color3.fromRGB(26, 18, 42)
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(240, 240, 240)
+    btn.Font = Enum.Font.Code
+    btn.TextSize = 11
+    btn.BorderSizePixel = 0
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 5)
+    
+    local bstk = Instance.new("UIStroke", btn)
+    bstk.Color = Color3.fromRGB(230, 100, 230)
+    bstk.Thickness = 0.8
+    bstk.Transparency = 0.5
+    
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+local function createZoneToggle(text, pos, parent, callback)
+    local row = Instance.new("Frame", parent)
+    row.Size = UDim2.new(1, -20, 0, 30)
+    row.Position = pos
+    row.BackgroundTransparency = 1
+    
+    local txt = Instance.new("TextLabel", row)
+    txt.Size = UDim2.new(0, 140, 1, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = text
+    txt.TextColor3 = Color3.fromRGB(190, 180, 200)
+    txt.Font = Enum.Font.Code
+    txt.TextSize = 11
+    txt.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local switch = Instance.new("TextButton", row)
+    switch.Size = UDim2.new(0, 34, 0, 18)
+    switch.Position = UDim2.new(1, -34, 0, 6)
+    switch.BackgroundColor3 = Color3.fromRGB(45, 33, 62)
+    switch.Text = ""
+    Instance.new("UICorner", switch).CornerRadius = UDim.new(1, 0)
+    
+    local circle = Instance.new("Frame", switch)
+    circle.Size = UDim2.new(0, 12, 0, 12)
+    circle.Position = UDim2.new(0, 3, 0, 3)
+    circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Instance.new("UICorner", circle).CornerRadius = UDim.new(1, 0)
+    
+    local active = false
+    switch.MouseButton1Click:Connect(function()
+        active = not active
+        local targetPos = active and UDim2.new(1, -15, 0, 3) or UDim2.new(0, 3, 0, 3)
+        local targetColor = active and Color3.fromRGB(230, 100, 230) or Color3.fromRGB(45, 33, 62)
+        
+        TweenService:Create(circle, TweenInfo.new(0.15), {Position = targetPos}):Play()
+        TweenService:Create(switch, TweenInfo.new(0.15), {BackgroundColor3 = targetColor}):Play()
+        
+        callback(active)
+    end)
+end
+
+-- =========================================================================
+-- SYSTEM CORE FUNCTIONS
+-- =========================================================================
+local SpeedBtn
+
+local function paksaSpeedGame(targetSpeed)
+    if SpeedEvent then
+        task.spawn(function()
+            SpeedEvent:FireServer(targetSpeed)
+            task.wait(0.2)
+            SpeedEvent:FireServer(targetSpeed)
+        end)
+    end
+end
+
+createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 32), LeftBox, function()
+    if not isRecording then
+        MacroData = {}
+        StartTime = os.clock()
+        isRecording = true
+        updateLog("• Status: 🔴 RECORDING ACTIVE\n• Info: Place units down now.")
+        
+        local clickCon
+        clickCon = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+            if not isRecording then clickCon:Disconnect() return end
+            if processed then return end
+            
+            if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and canRecordClick then
+                canRecordClick = false
+                local currentDelay = os.clock() - StartTime
+                local exactPos = Mouse.Hit.Position 
+                
+                table.insert(MacroData, {Time = currentDelay, X = exactPos.X, Y = exactPos.Y, Z = exactPos.Z})
+                updateLog(string.format("• Status: Locked Unit %d\n• Timestamp: %.2fs", #MacroData, currentDelay))
+                
+                task.wait(1.2)
+                canRecordClick = true
+            end
+        end)
+    else
+        isRecording = false
+        if #MacroData > 0 then
+            if writefile then
+                writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
+                updateLog(string.format("• Status: 💾 SAVED!\n• Total units locked: %d", #MacroData))
+            end
+        else
+            updateLog("• Status: ❌ Error: Process canceled. Empty data.")
+        end
+    end
+end)
+
+local function muatDataMakro()
+    if readfile and isfile and isfile(FILE_NAME) then
+        MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
+        updateLog(string.format("• Status: 📂 MACRO LOADED\n• Total ready: %d units", #MacroData))
+        return true
+    else
+        updateLog("• Status: ❌ Error: Saved file not found.")
+        return false
+    end
+end
+createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 78), UDim2.new(1, -20, 0, 32), LeftBox, muatDataMakro)
+
+local function jalankanPlayback()
+    if #MacroData == 0 then
+        updateLog("• Status: ❌ Error: Empty queue. Load text first.")
+        return
+    end
+    updateLog("• Status: 🔵 PLAYBACK RUNNING...")
+    task.spawn(function()
+        paksaSpeedGame(currentSpeedSetting)
+        table.sort(MacroData, function(a, b) return a.Time < b.Time end)
+        local playbackStart = os.clock()
+        
+        for index = 1, #MacroData do
+            local step = MacroData[index]
+            while (os.clock() - playbackStart) < step.Time do task.wait(0.01) end
+            if PlaceEvent then
+                local finalArgs = {
+                    [1] = Vector3.new(step.X, step.Y, step.Z),
+                    [2] = "ffc541d5-ef02-4a69-8045-6a3d97bda308", 
+                    [3] = 0
+                }
+                task.spawn(function() PlaceEvent:InvokeServer(unpack(finalArgs)) end)
+                updateLog(string.format("• Status: Deploying sequence %d / %d", index, #MacroData))
+            end
+        end
+        updateLog("• Status: 🏁 All units spawned! Waiting match end.")
+        
+        if autoReplayEnabled then
+            while autoReplayEnabled do
+                task.wait(2)
+                if ReplayEvent then
+                    ReplayEvent:FireServer()
+                    updateLog("• Status: Victory! Rejoining...")
+                    break
+                end
+            end
+        end
+    end)
+end
+createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 118), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
+
+-- Speed Button Settings
+SpeedBtn = createZoneButton("Game Speed: Mode x3 (Gamepass)", UDim2.new(0, 10, 0, 38), UDim2.new(1, -20, 0, 32), RightBox, function()
+    if currentSpeedSetting == 3 then
+        currentSpeedSetting = 1
+        SpeedBtn.Text = "Game Speed: Mode x1"
+    elseif currentSpeedSetting == 1 then
+        currentSpeedSetting = 2
+        SpeedBtn.Text = "Game Speed: Mode x2"
+    else
+        currentSpeedSetting = 3
+        SpeedBtn.Text = "Game Speed: Mode x3 (Gamepass)"
+    end
+    paksaSpeedGame(currentSpeedSetting)
+    updateLog("• Target Speed Set to: x" .. tostring(currentSpeedSetting))
+end)
+
+createZoneToggle("Auto Replay Engine", UDim2.new(0, 10, 0, 85), RightBox, function(state)
+    autoReplayEnabled = state
+    if writefile then
+        writefile("rioo_autoreplay_state.txt", tostring(autoReplayEnabled))
+    end
+end)
+
+-- AUTO LOOP INSTANT LOAD
+task.spawn(function()
+    task.wait(3)
+    local suksesLoad = muatDataMakro()
+    if suksesLoad and isfile and isfile("rioo_autoreplay_state.txt") then
+        local state = readfile("rioo_autoreplay_state.txt")
+        if state == "true" then
+            autoReplayEnabled = true
+            task.wait(1.5)
+            jalankanPlayback()
+        end
+    end
+end)
