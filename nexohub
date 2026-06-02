@@ -1,4 +1,4 @@
--- === RIOOHUB V25 (AUTOPLAY LOOP PERSISTENT + MULTI-REMOTE FALLBACK) ===
+-- === RIOOHUB V27 (CORE INJECTION - MULTI UNIT PERFECT FIXED) ===
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -17,27 +17,58 @@ local FILE_NAME = "rioo_precise_macro.txt"
 local isRecording = false
 local StartTime = 0
 local MacroData = {}
-local canRecordClick = true
 local currentSpeedSetting = 3
 local speedToggleActive = false
 local autoReplayEnabled = false
 local autoSkipEnabled = false
 local autoVoteReadyEnabled = false
 local targetDifficulty = "Easy"
-local LastDetectedUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
 
 -- SAFE REMOTE MANAGER
 local function getSafeRemote(remoteName)
-    local eventsFolder = ReplicatedStorage:FindFirstChild("Events")
+    local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes")
     if eventsFolder then
         return eventsFolder:FindFirstChild(remoteName)
     end
     return nil
 end
 
+-- REAL-TIME REMOTE INJECTION (Sistem Sadap ID Unit)
+local placeRemote = getSafeRemote("PlaceTower")
+if placeRemote and placeRemote:IsA("RemoteFunction") then
+    local oldInvoke = placeRemote.InvokeServer
+    placeRemote.InvokeServer = function(self, ...)
+        local args = {...}
+        
+        -- Jika macro sedang merekam, sadap data langsung dari tangan player
+        if isRecording and args[1] and args[2] then
+            local currentDelay = os.clock() - StartTime
+            local coords = args[1] -- Vector3 asli game
+            local unitUID = args[2] -- ID Unit asli yang beneran ditaruh
+            
+            table.insert(MacroData, {
+                Type = "Spawn",
+                Time = currentDelay,
+                X = coords.X,
+                Y = coords.Y,
+                Z = coords.Z,
+                SavedUID = unitUID -- Disimpan murni sesuai unit yg dipasang!
+            })
+            
+            -- Trigger refresh visual log biar keliatan ID nya berubah
+            local shortID = string.sub(tostring(unitUID), 1, 8) .. "..."
+            game:GetService("StarterGui"):SetCore("SendNotification", {
+                Title = "RiooHub Recorder",
+                Text = "Captured Unit ID: " .. shortID,
+                Duration = 1.5
+            })
+        end
+        return oldInvoke(self, unpack(args))
+    end
+end
+
 -- MULTI-REMOTE FALLBACK FOR REPLAY
 local function eksekusiPlayAgain()
-    -- Mencoba beberapa nama remote yang sering dipakai game tower defense
     local replayRemote = getSafeRemote("PlayAgain") or getSafeRemote("Replay") or getSafeRemote("Retry")
     if replayRemote then
         replayRemote:FireServer()
@@ -46,17 +77,12 @@ local function eksekusiPlayAgain()
     return false
 end
 
--- FUNCTION TO FORCE VOTE & READY INSTANTLY
 local function eksekusiVoteDanReady()
     local voteRemote = getSafeRemote("VoteDifficulty")
-    if voteRemote then
-        voteRemote:FireServer(targetDifficulty)
-    end
+    if voteRemote then voteRemote:FireServer(targetDifficulty) end
     task.wait(0.3)
     local readyRemote = getSafeRemote("Ready")
-    if readyRemote then
-        readyRemote:FireServer()
-    end
+    if readyRemote then readyRemote:FireServer() end
 end
 
 -- =========================================================================
@@ -136,21 +162,6 @@ SidebarLine.BackgroundColor3 = Color3.fromRGB(230, 100, 230)
 SidebarLine.BorderSizePixel = 0
 SidebarLine.BackgroundTransparency = 0.7
 
-local LogoBg = Instance.new("Frame", Sidebar)
-LogoBg.Size = UDim2.new(0, 34, 0, 34)
-LogoBg.Position = UDim2.new(0.5, -17, 0, 12)
-LogoBg.BackgroundColor3 = Color3.fromRGB(25, 16, 40)
-LogoBg.BorderSizePixel = 0
-Instance.new("UICorner", LogoBg).CornerRadius = UDim.new(1, 0)
-
-local LogoText = Instance.new("TextLabel", LogoBg)
-LogoText.Size = UDim2.new(1, 0, 1, 0)
-LogoText.BackgroundTransparency = 1
-LogoText.Text = "Z"
-LogoText.TextColor3 = Color3.fromRGB(255, 255, 255)
-LogoText.Font = Enum.Font.GothamBold
-LogoText.TextSize = 18
-
 -- TOPBAR
 local Topbar = Instance.new("Frame", Main)
 Topbar.Size = UDim2.new(1, -50, 0, 50)
@@ -171,7 +182,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V25)"
+Subtitle.Text = "Full AFK Automation (RiooHub V27)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -182,7 +193,6 @@ Container.Size = UDim2.new(1, -70, 1, -70)
 Container.Position = UDim2.new(0, 60, 0, 60)
 Container.BackgroundTransparency = 1
 
--- GRID WINDOW GENERATOR
 local function createZoneSection(name, iconText, size, pos)
     local box = Instance.new("Frame", Container)
     box.Size = size
@@ -213,7 +223,6 @@ local LeftBox = createZoneSection("Macro Automation", "📈", UDim2.new(0, 245, 
 local RightBox = createZoneSection("Match Settings", "⚙️", UDim2.new(0, 245, 0, 195), UDim2.new(0, 260, 0, 0))
 local StatusBox = createZoneSection("Console Log Activity", "📋", UDim2.new(1, -5, 0, 140), UDim2.new(0, 0, 0, 210))
 
--- HIGH SCROLLABLE LOG
 local LogScroll = Instance.new("ScrollingFrame", StatusBox)
 LogScroll.Size = UDim2.new(1, -20, 1, -35)
 LogScroll.Position = UDim2.new(0, 10, 0, 30)
@@ -226,7 +235,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: Engine V25 Ready. Persistent Auto-Replay active."
+StatusLog.Text = "[SYSTEM]: V27 Active. Core Injection Remote Sniffer Armed."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -236,11 +245,9 @@ StatusLog.TextWrapped = true
 
 local function appendZoneLog(actionType, text)
     local timestamp = os.date("%X")
-    local formatText = string.format("[%s] [%s] %s", timestamp, string.upper(actionType), text)
-    StatusLog.Text = formatText .. "\n" .. StatusLog.Text
+    StatusLog.Text = string.format("[%s] [%s] %s\n", timestamp, string.upper(actionType), text) .. StatusLog.Text
 end
 
--- BUTTON GENERATOR
 local function createZoneButton(text, pos, size, parent, callback)
     local btn = Instance.new("TextButton", parent)
     btn.Size = size
@@ -262,7 +269,6 @@ local function createZoneButton(text, pos, size, parent, callback)
     return btn
 end
 
--- PREMIUM TOGGLE GENERATOR
 local function createZoneToggle(text, pos, parent, callback)
     local row = Instance.new("Frame", parent)
     row.Size = UDim2.new(1, -20, 0, 26)
@@ -304,10 +310,7 @@ local function createZoneToggle(text, pos, parent, callback)
     end)
 end
 
--- =========================================================================
--- SYSTEM ENGINE AUTOMATION CORE
--- =========================================================================
-
+-- LOOPS MANAGEMENT
 local function paksaSpeedGame(targetSpeed)
     local speedRemote = getSafeRemote("RequestGameSpeed")
     if speedRemote then
@@ -319,40 +322,31 @@ local function paksaSpeedGame(targetSpeed)
     end
 end
 
--- Auto Skip Engine Loop
 task.spawn(function()
     while task.wait(1) do
         if autoSkipEnabled then
             local skipRemote = getSafeRemote("VoteSkip")
-            if skipRemote then
-                skipRemote:FireServer(true)
-            end
+            if skipRemote then skipRemote:FireServer(true) end
         end
     end
 end)
 
--- Continuous Loop Monitoring for Auto Vote + Ready
 task.spawn(function()
     while task.wait(1.5) do
-        if autoVoteReadyEnabled then
-            eksekusiVoteDanReady()
-        end
+        if autoVoteReadyEnabled then eksekusiVoteDanReady() end
     end
 end)
 
--- INDEPENDENT PERSISTENT AUTO-REPLAY THREAD (FIXED DEAD-LOCK)
 task.spawn(function()
     while task.wait(3) do
         if autoReplayEnabled then
             local berhasil = eksekusiPlayAgain()
-            if berhasil then
-                appendZoneLog("Replay", "Spamming PlayAgain remote to server...")
-            end
+            if berhasil then appendZoneLog("Replay", "Spamming PlayAgain remote...") end
         end
     end
 end)
 
--- Smart Recording Button
+-- SMART INJECTED RECORDING BUTTON
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
@@ -362,30 +356,12 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started.")
-        
-        local clickCon
-        clickCon = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
-            if not isRecording then clickCon:Disconnect() return end
-            if processed then return end
-            
-            if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and canRecordClick then
-                canRecordClick = false
-                local currentDelay = os.clock() - StartTime
-                local exactPos = Mouse.Hit.Position 
-                
-                table.insert(MacroData, {Type = "Spawn", Time = currentDelay, X = exactPos.X, Y = exactPos.Y, Z = exactPos.Z, SavedUID = LastDetectedUID})
-                appendZoneLog("Spawn", "Position buffered.")
-                
-                task.wait(1.2)
-                canRecordClick = true
-            end
-        end)
+        appendZoneLog("System", "Recording via Remote Sniffer. Place your units normally!")
     else
         isRecording = false
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Recording saved! Sequences: %d", #MacroData))
+        appendZoneLog("System", string.format("Saved! Actions: %d", #MacroData))
         
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
@@ -396,7 +372,7 @@ end)
 local function muatDataMakro()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        appendZoneLog("Load", string.format("Loaded macro file. %d sequences armed.", #MacroData))
+        appendZoneLog("Load", string.format("Loaded macro. %d multi-units armed.", #MacroData))
         return true
     end
     return false
@@ -417,26 +393,22 @@ local function jalankanPlayback()
             while (os.clock() - playbackStart) < adjustedTime do task.wait(0.01) end
             
             local placeRemote = getSafeRemote("PlaceTower")
-            if step.Type == "Spawn" and placeRemote then
+            if step.Type == "Spawn" and placeRemote and step.SavedUID then
                 local finalArgs = {
                     [1] = Vector3.new(step.X, step.Y, step.Z),
-                    [2] = step.SavedUID or LastDetectedUID, 
+                    [2] = step.SavedUID, -- Menaruh unit asli sesuai rekaman per-detik
                     [3] = 0
                 }
                 task.spawn(function() placeRemote:InvokeServer(unpack(finalArgs)) end)
-                appendZoneLog("Spawn", string.format("Sequence %d injected.", index))
+                appendZoneLog("Spawn", string.format("Sequence %d deployed successfully.", index))
             end
         end
-        
-        appendZoneLog("System", "All sequences deployed. Waiting for game over state...")
+        appendZoneLog("System", "All sequences deployed.")
     end)
 end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
 
--- =========================================================================
 -- MATCH SETTINGS
--- =========================================================================
-
 createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 32), RightBox, function(state)
     speedToggleActive = state
     if state then currentSpeedSetting = 2; paksaSpeedGame(2) else paksaSpeedGame(1) end
@@ -449,24 +421,16 @@ end)
 
 createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(state)
     autoSkipEnabled = state
-    if state then appendZoneLog("Skip", "Auto Skip Wave system enabled.") end
 end)
 
 createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state)
     autoVoteReadyEnabled = state
-    if state then 
-        appendZoneLog("System", "Auto Vote & Ready system armed.")
-        eksekusiVoteDanReady()
-    end
+    if state then eksekusiVoteDanReady() end
 end)
 
--- PERSISTENT TOGGLE HOOK
 createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 144), RightBox, function(state)
     autoReplayEnabled = state
-    if state then
-        appendZoneLog("System", "Auto Play Again armed. Monitor active.")
-        eksekusiPlayAgain() -- Langsung tes tembak sekali pas dinyalakan
-    end
+    if state then eksekusiPlayAgain() end
     if writefile then writefile("rioo_autoreplay_state.txt", tostring(autoReplayEnabled)) end
 end)
 
