@@ -1,4 +1,4 @@
--- === RIOOHUB V23 (UNIVERSAL FONT COMPATIBILITY + FORCE RENDER FIXED) ===
+-- === RIOOHUB V24 (INSTANT TOGGLE TRIGGER + MATCH MONITOR FIXED) ===
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -35,8 +35,23 @@ local function getSafeRemote(remoteName)
     return nil
 end
 
+-- FUNCTION TO FORCE VOTE & READY INSTANTLY
+local function eksekusiVoteDanReady()
+    local voteRemote = getSafeRemote("VoteDifficulty")
+    if voteRemote then
+        voteRemote:FireServer(targetDifficulty)
+    end
+    
+    task.wait(0.3) -- Jeda mikro agar tidak bertabrakan
+    
+    local readyRemote = getSafeRemote("Ready")
+    if readyRemote then
+        readyRemote:FireServer()
+    end
+end
+
 -- =========================================================================
--- INTERFACE BASE LAYOUT (ROBLOX 2026 SAFE FONTS)
+-- INTERFACE BASE LAYOUT
 -- =========================================================================
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 ScreenGui.Name = "RiooHub_ZoneEngine"
@@ -65,7 +80,7 @@ MinBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
 MinBtn.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
 MinBtn.Text = "Z"
 MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MinBtn.Font = Enum.Font.GothamBold -- Safe Font Replacement
+MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = 20
 MinBtn.Visible = false
 MinBtn.Active = true
@@ -147,7 +162,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V23)"
+Subtitle.Text = "Full AFK Automation (RiooHub V24)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -202,7 +217,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: Core isolated. Standard fonts armed. UI rendering complete!"
+StatusLog.Text = "[SYSTEM]: Engine V24 Ready. Logic routing hotfixed."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -307,6 +322,15 @@ task.spawn(function()
     end
 end)
 
+-- Continuous Loop Monitoring for Auto Vote + Ready
+task.spawn(function()
+    while task.wait(1.5) do
+        if autoVoteReadyEnabled then
+            eksekusiVoteDanReady()
+        end
+    end
+end)
+
 -- Smart Recording Button
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
@@ -366,20 +390,6 @@ local function jalankanPlayback()
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
         
-        if autoVoteReadyEnabled then
-            local voteRemote = getSafeRemote("VoteDifficulty")
-            if voteRemote then
-                voteRemote:FireServer(targetDifficulty)
-                appendZoneLog("Vote", "Difficulty selected: " .. targetDifficulty)
-            end
-            task.wait(0.5) 
-            local readyRemote = getSafeRemote("Ready")
-            if readyRemote then
-                readyRemote:FireServer()
-                appendZoneLog("Ready", "State forced to READY.")
-            end
-        end
-        
         for index = 1, #MacroData do
             local step = MacroData[index]
             local adjustedTime = speedToggleActive and (step.Time / 1.5) or step.Time
@@ -415,7 +425,7 @@ end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
 
 -- =========================================================================
--- MATCH SETTINGS (SAFE RENDERING SAKLAR)
+-- MATCH SETTINGS
 -- =========================================================================
 
 createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 32), RightBox, function(state)
@@ -433,9 +443,13 @@ createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(
     if state then appendZoneLog("Skip", "Auto Skip Wave system enabled.") end
 end)
 
+-- FIXED INSTANT TRIGGER SAKLAR
 createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state)
     autoVoteReadyEnabled = state
-    if state then appendZoneLog("System", "Auto Vote & Ready system armed.") end
+    if state then 
+        appendZoneLog("System", "Auto Vote & Ready system armed. Executing instantly...")
+        eksekusiVoteDanReady() -- TEMBAK REMOTENYA DETIK INI JUGA!
+    end
 end)
 
 createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 144), RightBox, function(state)
