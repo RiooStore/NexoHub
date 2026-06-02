@@ -1,4 +1,4 @@
--- === RIOOHUB V20 (AUTO EASY + READY ENGINE INTEGRATION) ===
+-- === RIOOHUB V21 (ANTI-CRASH FIX + FULL INTERFACE RESTORED) ===
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -22,19 +22,17 @@ local currentSpeedSetting = 3
 local speedToggleActive = false
 local autoReplayEnabled = false
 local autoSkipEnabled = false
-local autoVoteReadyEnabled = false -- Menyisipkan logika gabungan Easy + Ready
+local autoVoteReadyEnabled = false
 local targetDifficulty = "Easy"
+local LastDetectedUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308" -- Default fallback ID
 
--- Remotes Binding
+-- Remotes Binding (Safe Verification)
 local Events = ReplicatedStorage:WaitForChild("Events")
 local PlaceEvent = Events:FindFirstChild("PlaceTower")
-local UpgradeEvent = Events:FindFirstChild("UpgradeTower") or Events:FindFirstChild("Upgrade")
 local SpeedEvent = Events:FindFirstChild("RequestGameSpeed")
-
--- User Input Remotes
 local ReplayEvent = Events:FindFirstChild("PlayAgain")
 local VoteDiffEvent = Events:FindFirstChild("VoteDifficulty")
-local ReadyEvent = Events:FindFirstChild("Ready") -- Remote Ready Baru
+local ReadyEvent = Events:FindFirstChild("Ready")
 local SkipWaveEvent = Events:FindFirstChild("VoteSkip")
 
 -- =========================================================================
@@ -149,7 +147,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V20)"
+Subtitle.Text = "Full AFK Automation (RiooHub V21)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.Code
 Subtitle.TextSize = 11
@@ -204,7 +202,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: Core active. Waiting for sequences..."
+StatusLog.Text = "[SYSTEM]: Core active. UI safely generated. Ready to build!"
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.Code
 StatusLog.TextSize = 11
@@ -305,20 +303,7 @@ task.spawn(function()
     end
 end)
 
--- HOOK ADAPTER: Menangkap UID asli secara dinamis
-local LastDetectedUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
-if PlaceEvent then
-    local oldInvoke = PlaceEvent.InvokeServer
-    PlaceEvent.InvokeServer = function(self, ...)
-        local args = {...}
-        if args[2] and typeof(args[2]) == "string" and string.len(args[2]) > 10 then
-            LastDetectedUID = args[2]
-        end
-        return oldInvoke(self, ...)
-    end
-end
-
--- Smart Recording Button
+-- Smart Recording Button (SAFE RE-ENGINEERED)
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
@@ -328,7 +313,7 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started. Dynamic UID active.")
+        appendZoneLog("System", "Recording started. Coordinates listening mode armed.")
         
         local clickCon
         clickCon = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
@@ -340,8 +325,9 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
                 local currentDelay = os.clock() - StartTime
                 local exactPos = Mouse.Hit.Position 
                 
+                -- Menyimpan murni koordinat secara aman tanpa merusak remote internal game
                 table.insert(MacroData, {Type = "Spawn", Time = currentDelay, X = exactPos.X, Y = exactPos.Y, Z = exactPos.Z, SavedUID = LastDetectedUID})
-                appendZoneLog("Spawn", "Unit coordinates tracked safely.")
+                appendZoneLog("Spawn", "Position buffered successfully.")
                 
                 task.wait(1.2)
                 canRecordClick = true
@@ -383,7 +369,7 @@ local function jalankanPlayback()
                 VoteDiffEvent:FireServer(targetDifficulty)
                 appendZoneLog("Vote", "Difficulty auto-selected: " .. targetDifficulty)
             end
-            task.wait(0.5) -- Jeda setengah detik biar server aman membaca request
+            task.wait(0.5) 
             if ReadyEvent then
                 ReadyEvent:FireServer()
                 appendZoneLog("Ready", "State forced to READY successfully.")
@@ -396,10 +382,9 @@ local function jalankanPlayback()
             while (os.clock() - playbackStart) < adjustedTime do task.wait(0.01) end
             
             if step.Type == "Spawn" and PlaceEvent then
-                local finalUID = step.SavedUID or LastDetectedUID
                 local finalArgs = {
                     [1] = Vector3.new(step.X, step.Y, step.Z),
-                    [2] = finalUID, 
+                    [2] = step.SavedUID or LastDetectedUID, 
                     [3] = 0
                 }
                 task.spawn(function() PlaceEvent:InvokeServer(unpack(finalArgs)) end)
@@ -407,7 +392,7 @@ local function jalankanPlayback()
             end
         end
         
-        appendZoneLog("System", "All sequences deployed. Keeping session alive for win state.")
+        appendZoneLog("System", "All sequences deployed. Keeping loop alive.")
         
         if autoReplayEnabled then
             while autoReplayEnabled do
@@ -442,7 +427,6 @@ createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(
     if state then appendZoneLog("Skip", "Auto Skip Wave system enabled.") end
 end)
 
--- UPDATE: Penggabungan Fitur Easy Mode + Auto Ready Klik
 createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state)
     autoVoteReadyEnabled = state
     if state then appendZoneLog("System", "Auto Vote & Ready system armed.") end
