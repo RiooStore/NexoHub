@@ -1,4 +1,4 @@
--- === RIOOHUB V30 (REAL-TIME INSTANCE SNIFFER - PLACE & UPGRADE ONLY) ===
+-- === RIOOHUB V31 (HYBRID SNIFFER ENGINE - UPGRADE FIXED) ===
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -6,23 +6,19 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 
--- WAITING ENGINE (Memastikan game sudah siap 100%)
 if not Players.LocalPlayer then
     Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
 end
 local LocalPlayer = Players.LocalPlayer
 
--- Penentuan lokasi UI paling aman
 local TargetGuiParent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
 if PlayerGui then TargetGuiParent = PlayerGui end
 
--- Anti Double UI
 if TargetGuiParent:FindFirstChild("RiooHub_ZoneEngine") then 
     TargetGuiParent.RiooHub_ZoneEngine:Destroy() 
 end
 
--- Core Config & States
 local FILE_NAME = "rioo_precise_macro.txt"
 local isRecording = false
 local StartTime = 0
@@ -34,13 +30,9 @@ local autoSkipEnabled = false
 local autoVoteReadyEnabled = false
 local targetDifficulty = "Easy"
 
--- Fallback UID Unit Utama
 local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
-
--- Cari folder tempat unit ditaruh di game lu (Workspace biasanya punya folder Towers/Units/Placements)
 local TowerFolder = Workspace:FindFirstChild("Towers") or Workspace:FindFirstChild("Units") or Workspace:FindFirstChild("PlacedTowers") or Workspace
 
--- SAFE REMOTE MANAGER
 local function getSafeRemote(remoteName)
     local eventsFolder = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes")
     if eventsFolder then
@@ -49,7 +41,7 @@ local function getSafeRemote(remoteName)
     return nil
 end
 
--- TRACKER SLOT UNIT (Mencari ID unit aktif di saku)
+-- TRACKER SLOT UNIT
 task.spawn(function()
     while task.wait(0.3) do
         pcall(function()
@@ -68,13 +60,9 @@ task.spawn(function()
     end
 end)
 
--- REPLAY REMOTE ENGINE
 local function eksekusiPlayAgain()
     local replayRemote = getSafeRemote("PlayAgain") or getSafeRemote("Replay") or getSafeRemote("Retry")
-    if replayRemote then
-        replayRemote:FireServer()
-        return true
-    end
+    if replayRemote then replayRemote:FireServer(); return true end
     return false
 end
 
@@ -109,7 +97,6 @@ MainStroke.Color = Color3.fromRGB(230, 100, 230)
 MainStroke.Thickness = 1
 MainStroke.Transparency = 0.3
 
--- MINIMIZE BUTTON
 local MinBtn = Instance.new("TextButton", ScreenGui)
 MinBtn.Size = UDim2.new(0, 45, 0, 45)
 MinBtn.Position = UDim2.new(0.02, 0, 0.4, 0)
@@ -119,11 +106,7 @@ MinBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.TextSize = 20
 MinBtn.Visible = false
-
 Instance.new("UICorner", MinBtn).CornerRadius = UDim.new(1, 0)
-local MinStroke = Instance.new("UIStroke", MinBtn)
-MinStroke.Color = Color3.fromRGB(230, 100, 230)
-MinStroke.Thickness = 1.5
 
 local CloseToggle = Instance.new("TextButton", Main)
 CloseToggle.Size = UDim2.new(0, 30, 0, 30)
@@ -134,24 +117,15 @@ CloseToggle.TextColor3 = Color3.fromRGB(230, 100, 230)
 CloseToggle.Font = Enum.Font.GothamBold
 CloseToggle.TextSize = 16
 
-CloseToggle.MouseButton1Click:Connect(function()
-    Main.Visible = false
-    MinBtn.Visible = true
-end)
+CloseToggle.MouseButton1Click:Connect(function() Main.Visible = false; MinBtn.Visible = true end)
+MinBtn.MouseButton1Click:Connect(function() MinBtn.Visible = false; Main.Visible = true end)
 
-MinBtn.MouseButton1Click:Connect(function()
-    MinBtn.Visible = false
-    Main.Visible = true
-end)
-
--- SIDEBAR
 local Sidebar = Instance.new("Frame", Main)
 Sidebar.Size = UDim2.new(0, 50, 1, 0)
 Sidebar.BackgroundColor3 = Color3.fromRGB(20, 14, 32)
 Sidebar.BorderSizePixel = 0
 Instance.new("UICorner", Sidebar).CornerRadius = UDim.new(0, 10)
 
--- TOPBAR
 local Topbar = Instance.new("Frame", Main)
 Topbar.Size = UDim2.new(1, -50, 0, 50)
 Topbar.Position = UDim2.new(0, 50, 0, 0)
@@ -171,7 +145,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V30)"
+Subtitle.Text = "Full AFK Automation (RiooHub V31)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -199,7 +173,6 @@ local function createZoneSection(name, iconText, size, pos)
     titleLbl.Font = Enum.Font.GothamBold
     titleLbl.TextSize = 11
     titleLbl.TextXAlignment = Enum.TextXAlignment.Left
-    
     return box
 end
 
@@ -218,7 +191,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: RiooHub V30 Sniffer Active. Ready to filter macros."
+StatusLog.Text = "[SYSTEM]: RiooHub V31 Hybrid Ready. Capturing Place & Upgrade flawlessly."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -286,57 +259,82 @@ local function createZoneToggle(text, pos, parent, callback)
 end
 
 -- =========================================================================
--- DETEKSI MAP REAL-TIME (HANYA DETEKSI COOLDOWN & PLACEMENT ASLI)
+-- HYBRID SNIFFER RECORDER (PLACE & UPGRADE TRACKING)
 -- =========================================================================
-local recordConnection
+local placeConnection
+local upgradeHookActive = false
 
-local function MulaiDeteksiRealtime()
+local function AktifkanHybridSniffer()
+    -- 1. DETEKSI PLACE (Lewat Workspace - 100% Anti Sampah Klik)
     if TowerFolder then
-        recordConnection = TowerFolder.ChildAdded:Connect(function(child)
+        placeConnection = TowerFolder.ChildAdded:Connect(function(child)
             if not isRecording then return end
-            
-            -- Memastikan unit itu milik lu (punya tag nama lu atau dibuat oleh lu)
-            task.wait(0.1) -- nunggu info unit ke-load sebentar di map
+            task.wait(0.1)
             local ownerCheck = child:FindFirstChild("Owner") or child:FindFirstChild("Player")
             if ownerCheck and ownerCheck.Value ~= LocalPlayer.Name then return end
             
             local primaryPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
             if primaryPart then
                 local currentDelay = os.clock() - StartTime
-                local pos = primaryPart.Position
-                
                 table.insert(MacroData, {
                     Type = "Spawn",
                     Time = currentDelay,
-                    X = pos.X,
-                    Y = pos.Y,
-                    Z = pos.Z,
+                    X = primaryPart.Position.X,
+                    Y = primaryPart.Position.Y,
+                    Z = primaryPart.Position.Z,
                     SavedUID = LastSelectedUnitUID
                 })
-                appendZoneLog("Place", "Tower placement captured natively at Workspace!")
+                appendZoneLog("Place", "Tower placement captured successfully!")
             end
-            
-            -- Pantau UPGRADE dari level unit ini secara real-time
-            local levelObj = child:FindFirstChild("Level") or child:FindFirstChild("Upgrade")
-            if levelObj then
-                levelObj.Changed:Connect(function(newVal)
-                    if isRecording then
-                        local currentDelay = os.clock() - StartTime
-                        local primaryPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
-                        if primaryPart then
+        end)
+    end
+
+    -- 2. DETEKSI UPGRADE (Mencegat Remote Upgrade secara pasif & aman)
+    if not upgradeHookActive then
+        upgradeHookActive = true
+        local upgradeRemote = getSafeRemote("UpgradeTower") or getSafeRemote("Upgrade")
+        if upgradeRemote then
+            local originalNamecall
+            originalNamecall = hookmetatable(game, {
+                __namecall = newcclosure(function(self, ...)
+                    local method = getnamecallmethod()
+                    local args = {...}
+                    
+                    if isRecording and self == upgradeRemote and (method == "FireServer" or method == "InvokeServer") then
+                        -- Cari argumen koordinat Vector3 dari remote game lu
+                        local pos = nil
+                        for _, arg in pairs(args) do
+                            if typeof(arg) == "Vector3" then
+                                pos = arg
+                                break
+                            elseif typeof(arg) == "table" and arg.X and arg.Y and arg.Z then
+                                pos = Vector3.new(arg.X, arg.Y, arg.Z)
+                                break
+                            end
+                        end
+                        
+                        -- Kalau argumennya berupa model tower, kita ambil posisinya
+                        if not pos and typeof(args[1]) == "Instance" and args[1]:IsA("Model") then
+                            local part = args[1].PrimaryPart or args[1]:FindFirstChildWhichIsA("BasePart")
+                            if part then pos = part.Position end
+                        end
+
+                        if pos then
+                            local currentDelay = os.clock() - StartTime
                             table.insert(MacroData, {
                                 Type = "Upgrade",
                                 Time = currentDelay,
-                                X = primaryPart.Position.X,
-                                Y = primaryPart.Position.Y,
-                                Z = primaryPart.Position.Z
+                                X = pos.X,
+                                Y = pos.Y,
+                                Z = pos.Z
                             })
-                            appendZoneLog("Upgrade", "Tower upgrade sequence captured!")
+                            appendZoneLog("Upgrade", "Upgrade action captured via secure bridge!")
                         end
                     end
+                    return originalNamecall(self, ...)
                 end)
-            end
-        end)
+            })
+        end
     end
 end
 
@@ -349,11 +347,11 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         isRecording = true
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started. Go place/upgrade towers normally.")
-        MulaiDeteksiRealtime()
+        appendZoneLog("System", "Recording started. Place and Upgrade now.")
+        AktifkanHybridSniffer()
     else
         isRecording = false
-        if recordConnection then recordConnection:Disconnect() end
+        if placeConnection then placeConnection:Disconnect() end
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
         appendZoneLog("System", string.format("Recording saved: %d active moves.", #MacroData))
@@ -375,7 +373,7 @@ createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 75), UDim2.new(1, -2
 
 local function jalankanPlayback()
     if #MacroData == 0 then return end
-    appendZoneLog("Play", "Deploying playback macros...")
+    appendZoneLog("Play", "Deploying hybrid playback...")
     task.spawn(function()
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
@@ -396,7 +394,7 @@ local function jalankanPlayback()
             elseif step.Type == "Upgrade" then
                 local upgradeRemote = getSafeRemote("UpgradeTower") or getSafeRemote("Upgrade")
                 if upgradeRemote then
-                    -- Cari koordinat tower terdekat untuk di-upgrade otomatis
+                    -- Playback otomatis mengirim ulang data upgrade sesuai posisi asal koordinatnya
                     local finalArgs = {[1] = Vector3.new(step.X, step.Y, step.Z)}
                     task.spawn(function()
                         if upgradeRemote:IsA("RemoteFunction") then upgradeRemote:InvokeServer(unpack(finalArgs)) else upgradeRemote:FireServer(unpack(finalArgs)) end
