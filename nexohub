@@ -1,4 +1,4 @@
--- === RIOOHUB V37 (ORIGINAL UI RESTORED + STABLE DETECTOR) ===
+-- === RIOOHUB V38 (FORCE WIPER MEMORY + ORIGINAL UI) ===
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -11,12 +11,17 @@ if not LocalPlayer then
     LocalPlayer = Players.LocalPlayer
 end
 
--- AMAN: Pakai PlayerGui biar pasti muncul di semua executor
 local TargetGuiParent = LocalPlayer:WaitForChild("PlayerGui")
 
-if TargetGuiParent:FindFirstChild("RiooHub_ZoneEngine") then 
-    TargetGuiParent.RiooHub_ZoneEngine:Destroy() 
+-- =========================================================================
+-- FORCE WIPER: Hapus Semua UI Lama Yang Nyangkut di Memori
+-- =========================================================================
+for _, oldGui in pairs(TargetGuiParent:GetChildren()) do
+    if oldGui.Name == "RiooHub_ZoneEngine" or oldGui:FindFirstChild("Main") then
+        oldGui:Destroy()
+    end
 end
+task.wait(0.2) -- Jeda tipis biar penghapusan kelar
 
 local FILE_NAME = "rioo_precise_macro.txt"
 local isRecording = false
@@ -106,7 +111,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V37 Restored)"
+Subtitle.Text = "Full AFK Automation (RiooHub V38 Clean Loaded)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -151,7 +156,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: RiooHub V37 UI Successfully Restored & Stable."
+StatusLog.Text = "[SYSTEM]: RiooHub V38 Clean Active. Memory wiped perfectly."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -219,7 +224,7 @@ local function createZoneToggle(text, pos, parent, callback)
 end
 
 -- =========================================================================
--- BACKEND ENGINE (STABIL & AMAN UTK SEMUA EXECUTOR)
+-- MAIN DETECTOR ENGINE
 -- =========================================================================
 local placeConnection = nil
 local clickConnection = nil
@@ -247,9 +252,8 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         isRecording = true
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started. Place or Upgrade your towers now!")
+        appendZoneLog("System", "Recording started. Go place or upgrade your units.")
         
-        -- 1. Deteksi Placement Tower
         if currentFolder and not placeConnection then
             placeConnection = currentFolder.ChildAdded:Connect(function(child)
                 if not isRecording then return end
@@ -269,9 +273,8 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
             end)
         end
         
-        -- 2. Deteksi Upgrade via Klik Mouse (Bypass Remote Spy & Anti-Crash)
         clickConnection = LocalPlayer:GetMouse().Button1Down:Connect(function()
-            task.wait(0.1) -- Beri jeda tipis agar remote upgrade game kelar duluan
+            task.wait(0.1)
             local tower = AmbilTowerDariMouse(currentFolder)
             if tower then
                 local p = tower.PrimaryPart or tower:FindFirstChildWhichIsA("BasePart")
@@ -283,7 +286,7 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
                         Y = p.Position.Y,
                         Z = p.Position.Z
                     })
-                    appendZoneLog("Upgrade", "Upgrade captured via Tower Position!")
+                    appendZoneLog("Upgrade", "Upgrade captured successfully.")
                 end
             end
         end)
@@ -307,7 +310,7 @@ createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 75), UDim2.new(1, -2
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
         appendZoneLog("Load", string.format("Loaded %d actions.", #MacroData))
     else
-        appendZoneLog("Error", "No macro file found to load.")
+        appendZoneLog("Error", "No macro file found.")
     end
 end)
 
@@ -335,7 +338,6 @@ createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0
                     appendZoneLog("Spawn", string.format("Placed unit sequence %d.", index))
                 end
             elseif step.Type == "Upgrade" and upgradeRemote then
-                -- Cari ID Live Tower terdekat dari koordinat lama
                 local targetPos = Vector3.new(step.X, step.Y, step.Z)
                 local jarakTerdekat = math.huge
                 local liveUID = nil
@@ -353,12 +355,8 @@ createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0
                 end
                 
                 if liveUID then
-                    task.spawn(function()
-                        upgradeRemote:InvokeServer(liveUID)
-                    end)
+                    task.spawn(function() upgradeRemote:InvokeServer(liveUID) end)
                     appendZoneLog("Upgrade", string.format("Upgraded unit sequence %d.", index))
-                else
-                    appendZoneLog("Error", "Could not cross-reference UID for upgrade.")
                 end
             end
         end
@@ -366,7 +364,7 @@ createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0
     end)
 end)
 
--- TOGGLES (STABLE DESIGN)
+-- TOGGLES
 createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 32), RightBox, function(state) autoSkipEnabled = state end)
 createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 60), RightBox, function(state) autoVoteReadyEnabled = state end)
 createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 88), RightBox, function(state) autoReplayEnabled = state end)
