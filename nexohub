@@ -1,4 +1,4 @@
--- === RIOOHUB V24 (INSTANT TOGGLE TRIGGER + MATCH MONITOR FIXED) ===
+-- === RIOOHUB V25 (AUTOPLAY LOOP PERSISTENT + MULTI-REMOTE FALLBACK) ===
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -35,15 +35,24 @@ local function getSafeRemote(remoteName)
     return nil
 end
 
+-- MULTI-REMOTE FALLBACK FOR REPLAY
+local function eksekusiPlayAgain()
+    -- Mencoba beberapa nama remote yang sering dipakai game tower defense
+    local replayRemote = getSafeRemote("PlayAgain") or getSafeRemote("Replay") or getSafeRemote("Retry")
+    if replayRemote then
+        replayRemote:FireServer()
+        return true
+    end
+    return false
+end
+
 -- FUNCTION TO FORCE VOTE & READY INSTANTLY
 local function eksekusiVoteDanReady()
     local voteRemote = getSafeRemote("VoteDifficulty")
     if voteRemote then
         voteRemote:FireServer(targetDifficulty)
     end
-    
-    task.wait(0.3) -- Jeda mikro agar tidak bertabrakan
-    
+    task.wait(0.3)
     local readyRemote = getSafeRemote("Ready")
     if readyRemote then
         readyRemote:FireServer()
@@ -162,7 +171,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V24)"
+Subtitle.Text = "Full AFK Automation (RiooHub V25)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -217,7 +226,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: Engine V24 Ready. Logic routing hotfixed."
+StatusLog.Text = "[SYSTEM]: Engine V25 Ready. Persistent Auto-Replay active."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -331,6 +340,18 @@ task.spawn(function()
     end
 end)
 
+-- INDEPENDENT PERSISTENT AUTO-REPLAY THREAD (FIXED DEAD-LOCK)
+task.spawn(function()
+    while task.wait(3) do
+        if autoReplayEnabled then
+            local berhasil = eksekusiPlayAgain()
+            if berhasil then
+                appendZoneLog("Replay", "Spamming PlayAgain remote to server...")
+            end
+        end
+    end
+end)
+
 -- Smart Recording Button
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
@@ -407,19 +428,7 @@ local function jalankanPlayback()
             end
         end
         
-        appendZoneLog("System", "All sequences deployed.")
-        
-        if autoReplayEnabled then
-            while autoReplayEnabled do
-                task.wait(4)
-                local replayRemote = getSafeRemote("PlayAgain")
-                if replayRemote then
-                    replayRemote:FireServer()
-                    appendZoneLog("Replay", "Executing PlayAgain remote!")
-                    break
-                end
-            end
-        end
+        appendZoneLog("System", "All sequences deployed. Waiting for game over state...")
     end)
 end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
@@ -443,17 +452,21 @@ createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(
     if state then appendZoneLog("Skip", "Auto Skip Wave system enabled.") end
 end)
 
--- FIXED INSTANT TRIGGER SAKLAR
 createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state)
     autoVoteReadyEnabled = state
     if state then 
-        appendZoneLog("System", "Auto Vote & Ready system armed. Executing instantly...")
-        eksekusiVoteDanReady() -- TEMBAK REMOTENYA DETIK INI JUGA!
+        appendZoneLog("System", "Auto Vote & Ready system armed.")
+        eksekusiVoteDanReady()
     end
 end)
 
+-- PERSISTENT TOGGLE HOOK
 createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 144), RightBox, function(state)
     autoReplayEnabled = state
+    if state then
+        appendZoneLog("System", "Auto Play Again armed. Monitor active.")
+        eksekusiPlayAgain() -- Langsung tes tembak sekali pas dinyalakan
+    end
     if writefile then writefile("rioo_autoreplay_state.txt", tostring(autoReplayEnabled)) end
 end)
 
