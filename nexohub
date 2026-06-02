@@ -1,4 +1,4 @@
--- === RIOOHUB PURE MACRO ENGINE (RESET TO ADVANCED DETECTOR) ===
+-- === RIOOHUB V40 (PURE LIGHTWEIGHT ENGINE - NO METATABLE HOOK) ===
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -10,20 +10,18 @@ if not LocalPlayer then
     LocalPlayer = Players.LocalPlayer
 end
 
+-- Menggunakan PlayerGui murni yang terbukti paling aman di executor lu
 local TargetGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- Bersihkan UI lama jika ada
 if TargetGui:FindFirstChild("RiooHub_PureMacro") then 
     TargetGui.RiooHub_PureMacro:Destroy() 
 end
 
--- KONFIGURASI UTAMA
 local FILE_NAME = "rioo_pure_macro.txt"
 local isRecording = false
 local StartTime = 0
 local MacroData = {}
 
--- Folder tempat unit berada (Menyesuaikan game Tower Defense)
 local function getTowerFolder()
     return Workspace:FindFirstChild("Towers") 
         or Workspace:FindFirstChild("Units") 
@@ -31,14 +29,13 @@ local function getTowerFolder()
         or Workspace
 end
 
--- Ambil Remote Event/Function Game secara aman
 local function getGameRemote(name)
     local events = ReplicatedStorage:FindFirstChild("Events") or ReplicatedStorage:FindFirstChild("Remotes") or ReplicatedStorage
     return events:FindFirstChild(name, true)
 end
 
 -- =========================================================================
--- SIMPLE UI (ASAL WORK & RINGAN)
+-- UI SUPER SIMPLE (PASTI MUNCUL & ANTI-LAG)
 -- =========================================================================
 local ScreenGui = Instance.new("ScreenGui", TargetGui)
 ScreenGui.Name = "RiooHub_PureMacro"
@@ -52,9 +49,7 @@ Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
 
-local Corner = Instance.new("UICorner", Main)
-Corner.CornerRadius = UDim.new(0, 8)
-
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
 local Stroke = Instance.new("UIStroke", Main)
 Stroke.Color = Color3.fromRGB(230, 100, 230)
 Stroke.Thickness = 1.5
@@ -62,19 +57,19 @@ Stroke.Thickness = 1.5
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundTransparency = 1
-Title.Text = "RIOO PURE MACRO ENGINE"
+Title.Text = "RIOO MACRO ENGINE V40"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 13
+Title.TextSize = 12
 
 local LogLabel = Instance.new("TextLabel", Main)
 LogLabel.Size = UDim2.new(1, -20, 0, 30)
 LogLabel.Position = UDim2.new(0, 10, 0, 35)
 LogLabel.BackgroundColor3 = Color3.fromRGB(10, 5, 15)
-LogLabel.Text = "Status: Idle..."
+LogLabel.Text = "Status: Ready"
 LogLabel.TextColor3 = Color3.fromRGB(150, 255, 150)
 LogLabel.Font = Enum.Font.SourceSans
-LogLabel.TextSize = 12
+LogLabel.TextSize = 13
 Instance.new("UICorner", LogLabel).CornerRadius = UDim.new(0, 4)
 
 local function setStatus(txt)
@@ -96,124 +91,95 @@ local function createButton(text, yPos, callback)
 end
 
 -- =========================================================================
--- CORE CORE DETECTOR: MENYADAP FUNGSI INTERNAL GAME MURNI
+-- SAFE PURE DETECTOR ENGINE (MURNI TRACKING WORKSPACE)
 -- =========================================================================
-local spawnHook = nil
-local gameHook = nil
+local towerConnections = {}
+local folderConnection = nil
+
+local function trackTowerFunctions(tower)
+    -- Deteksi UPGRADE via Perubahan Level (Membaca data internal game secara pasif)
+    local upgradeSignal = tower:FindFirstChild("Level") or tower:FindFirstChild("Upgrade")
+    if upgradeSignal and upgradeSignal:IsA("ValueBase") then
+        towerConnections[tower.Name.."_upg"] = upgradeSignal.Changed:Connect(function()
+            if not isRecording then return end
+            local p = tower.PrimaryPart or tower:FindFirstChildWhichIsA("BasePart")
+            if p then
+                table.insert(MacroData, {
+                    Type = "Upgrade",
+                    Time = os.clock() - StartTime,
+                    X = p.Position.X, Y = p.Position.Y, Z = p.Position.Z
+                })
+                setStatus("Recorded: Upgrade Fungsi Game!")
+            end
+        end)
+    end
+end
 
 local function StartPureRecording()
     MacroData = {}
     StartTime = os.clock()
-    local towerFolder = getTowerFolder()
+    local folder = getTowerFolder()
     
-    -- 1. Deteksi Fungsi Spawn (Melihat saat Unit Baru Ditambahkan ke Game)
-    spawnHook = towerFolder.ChildAdded:Connect(function(child)
+    -- 1. Deteksi SPAWN
+    folderConnection = folder.ChildAdded:Connect(function(child)
         if not isRecording then return end
-        task.wait(0.05) -- Jeda mikro agar properti unit ter-load sempurna oleh game
-        local primary = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
-        if primary then
-            local uidValue = child:FindFirstChild("UID") or child:FindFirstChild("Id")
-            local savedUID = uidValue and uidValue.Value or "default_uid"
+        task.wait(0.05)
+        local p = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
+        if p then
+            local uidVal = child:FindFirstChild("UID") or child:FindFirstChild("Id")
+            local actualUID = uidVal and uidVal.Value or "ffc541d5-ef02-4a69-8045-6a3d97bda308"
             
             table.insert(MacroData, {
                 Type = "Spawn",
                 Time = os.clock() - StartTime,
-                X = primary.Position.X,
-                Y = primary.Position.Y,
-                Z = primary.Position.Z,
-                UID = savedUID
+                X = p.Position.X, Y = p.Position.Y, Z = p.Position.Z,
+                UID = actualUID
             })
-            setStatus("Recorded: Spawn Unit!")
+            setStatus("Recorded: Spawn Fungsi Game!")
+            trackTowerFunctions(child)
         end
     end)
     
-    -- 2. Deteksi Fungsi Upgrade & Jual (Menyadap Jalur Komunikasi Game ke Server)
-    -- Menggunakan metatable hooking tingkat tinggi yang aman dari deteksi game
-    local rawMT = getrawmetatable(game)
-    setreadonly(rawMT, false)
-    local oldNamecall = rawMT.__namecall
-    
-    gameHook = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        local args = {...}
-        
-        if isRecording and (method == "InvokeServer" or method == "FireServer") then
-            -- Deteksi Fungsi Upgrade
-            if self.Name == "UpgradeTower" and args[1] then
-                local targetUID = args[1]
-                -- Cari posisi unit berdasarkan UID-nya saat ini di map
-                local x, y, z = 0, 0, 0
-                for _, t in pairs(towerFolder:GetChildren()) do
-                    local id = t:FindFirstChild("UID") or t:FindFirstChild("Id")
-                    if id and id.Value == targetUID then
-                        local part = t.PrimaryPart or t:FindFirstChildWhichIsA("BasePart")
-                        if part then x, y, z = part.Position.X, part.Position.Y, part.Position.Z end
-                        break
-                    end
+    -- Amati juga tower yang mendadak hilang/dijual (SELL)
+    for _, tower in pairs(folder:GetChildren()) do
+        trackTowerFunctions(tower)
+        towerConnections[tower.Name.."_del"] = tower.AncestryChanged:Connect(function(_, parent)
+            if not isRecording and not parent then
+                local p = tower:FindFirstChild("HumanoidRootPart") or tower.PrimaryPart
+                if p then
+                    table.insert(MacroData, {
+                        Type = "Sell",
+                        Time = os.clock() - StartTime,
+                        X = p.Position.X, Y = p.Position.Y, Z = p.Position.Z
+                    })
+                    setStatus("Recorded: Jual Fungsi Game!")
                 end
-                
-                table.insert(MacroData, {
-                    Type = "Upgrade",
-                    Time = os.clock() - StartTime,
-                    X = x, Y = y, Z = z,
-                    UID = targetUID
-                })
-                setStatus("Recorded: Upgrade Unit!")
-                
-            -- Deteksi Fungsi Jual (Sell)
-            elseif (self.Name == "SellTower" or self.Name == "Sell") and args[1] then
-                local targetUID = args[1]
-                local x, y, z = 0, 0, 0
-                for _, t in pairs(towerFolder:GetChildren()) do
-                    local id = t:FindFirstChild("UID") or t:FindFirstChild("Id")
-                    if id and id.Value == targetUID then
-                        local part = t.PrimaryPart or t:FindFirstChildWhichIsA("BasePart")
-                        if part then x, y, z = part.Position.X, part.Position.Y, part.Position.Z end
-                        break
-                    end
-                end
-                
-                table.insert(MacroData, {
-                    Type = "Sell",
-                    Time = os.clock() - StartTime,
-                    X = x, Y = y, Z = z,
-                    UID = targetUID
-                })
-                setStatus("Recorded: Sell Unit!")
             end
-        end
-        return oldNamecall(self, ...)
-    end))
-end
-
-local function StopPureRecording()
-    if spawnHook then spawnHook:Disconnect() spawnHook = nil end
-    -- Mengembalikan fungsi namecall bawaan game agar tidak bocor/lag
-    if gameHook then
-        local rawMT = getrawmetatable(game)
-        setreadonly(rawMT, false)
-        rawMT.__namecall = gameHook
-        gameHook = nil
+        end)
     end
 end
 
+local function StopPureRecording()
+    if folderConnection then folderConnection:Disconnect() folderConnection = nil end
+    for k, conn in pairs(towerConnections) do conn:Disconnect() towerConnections[k] = nil end
+end
+
 -- =========================================================================
--- PLAYBACK ENGINE (PRESISI TINGGI & PENEMPATAN SAMA PERSIS)
+-- PLAYBACK ENGINE (DELTA TIMING SINKRONASI PRESISI)
 -- =========================================================================
 local function PlayPureMacro()
-    if #MacroData == 0 then setStatus("No data to play!") return end
-    setStatus("Playing Automation...")
+    if #MacroData == 0 then setStatus("No macro data loaded!") return end
+    setStatus("Playing Back Macro...")
     
     task.spawn(function()
-        -- Urutkan data berdasarkan waktu agar tidak tertukar susunannya
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
-        local towerFolder = getTowerFolder()
+        local folder = getTowerFolder()
         
         for i = 1, #MacroData do
             local step = MacroData[i]
             
-            -- Sinkronisasi Waktu Menggunakan Kalkulasi Delta Waktu Murni (Presisi Milidetik)
+            -- Waktu 100% Sesuai Detik Saat Record (Delta Sync)
             while (os.clock() - playbackStart) < step.Time do
                 task.wait()
             end
@@ -221,23 +187,19 @@ local function PlayPureMacro()
             local targetPos = Vector3.new(step.X, step.Y, step.Z)
             
             if step.Type == "Spawn" then
-                local placeRemote = getGameRemote("PlaceTower") or getGameRemote("Place")
-                if placeRemote then
+                local remote = getGameRemote("PlaceTower") or getGameRemote("Place")
+                if remote then
                     task.spawn(function()
-                        if placeRemote:IsA("RemoteFunction") then 
-                            placeRemote:InvokeServer(targetPos, step.UID, 0) 
-                        else 
-                            placeRemote:FireServer(targetPos, step.UID, 0) 
-                        end
+                        if remote:IsA("RemoteFunction") then remote:InvokeServer(targetPos, step.UID, 0) else remote:FireServer(targetPos, step.UID, 0) end
                     end)
                     setStatus("Executed Spawn ["..i.."]")
                 end
                 
             elseif step.Type == "Upgrade" or step.Type == "Sell" then
-                -- Cari UID unit live yang posisinya paling pas dengan koordinat saat direkam
+                -- Cari ID live unit terdekat dari koordinat rekaman
                 local liveUID = nil
                 local closestDist = math.huge
-                for _, t in pairs(towerFolder:GetChildren()) do
+                for _, t in pairs(folder:GetChildren()) do
                     local bp = t:FindFirstChildWhichIsA("BasePart") or t.PrimaryPart
                     if bp then
                         local dist = (bp.Position - targetPos).Magnitude
@@ -250,8 +212,8 @@ local function PlayPureMacro()
                 end
                 
                 if liveUID then
-                    local targetRemoteName = (step.Type == "Upgrade") and "UpgradeTower" or "SellTower"
-                    local remote = getGameRemote(targetRemoteName) or getGameRemote("Sell")
+                    local remoteName = (step.Type == "Upgrade") and "UpgradeTower" or "SellTower"
+                    local remote = getGameRemote(remoteName) or getGameRemote("Sell")
                     if remote then
                         task.spawn(function()
                             if remote:IsA("RemoteFunction") then remote:InvokeServer(liveUID) else remote:FireServer(liveUID) end
@@ -261,12 +223,12 @@ local function PlayPureMacro()
                 end
             end
         end
-        setStatus("Macro Playback Finished!")
+        setStatus("Playback Finished Completely!")
     end)
 end
 
 -- =========================================================================
--- TOMBOL KONTROL UI
+-- INTERFACE CONTROLLER
 -- =========================================================================
 local RecordBtn
 RecordBtn = createButton("START RECORD", 80, function()
@@ -274,29 +236,29 @@ RecordBtn = createButton("START RECORD", 80, function()
         isRecording = true
         RecordBtn.Text = "STOP RECORD"
         RecordBtn.BackgroundColor3 = Color3.fromRGB(180, 50, 50)
-        setStatus("Recording internal functions...")
+        setStatus("Listening game functions...")
         StartPureRecording()
     else
         isRecording = false
         RecordBtn.Text = "START RECORD"
         RecordBtn.BackgroundColor3 = Color3.fromRGB(35, 25, 50)
         StopPureRecording()
-        setStatus("Saved " .. #MacroData .. " actions.")
+        setStatus("Captured " .. #MacroData .. " actions.")
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
         end
     end
 end)
 
-createButton("LOAD RECORD DATA", 125, function()
+createButton("LOAD MACRO DATA", 125, function()
     if readfile and isfile and isfile(FILE_NAME) then
         MacroData = HttpService:JSONDecode(readfile(FILE_NAME))
-        setStatus("Loaded " .. #MacroData .. " actions successfully.")
+        setStatus("Loaded " .. #MacroData .. " actions.")
     else
-        setStatus("No macro file found on device.")
+        setStatus("Macro file text not found.")
     end
 end)
 
-createButton("RUN PLAYBACK (AUTO)", 170, function()
+createButton("RUN AUTOMATION", 170, function()
     PlayPureMacro()
 end)
