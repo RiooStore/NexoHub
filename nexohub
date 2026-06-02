@@ -1,4 +1,4 @@
--- === RIOOHUB V34 (UI FIXED + UID CROSS-REFERENCE ENGINE) ===
+-- === RIOOHUB V35 (PURE UI CLICK DETECTOR - NO HOOK, NO CRASH) ===
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -6,16 +6,16 @@ local TweenService = game:GetService("TweenService")
 local CoreGui = game:GetService("CoreGui")
 local Workspace = game:GetService("Workspace")
 
-if not Players.LocalPlayer then
-    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-end
 local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then
+    Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
+    LocalPlayer = Players.LocalPlayer
+end
 
 local TargetGuiParent = CoreGui:FindFirstChild("RobloxGui") or CoreGui
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
 if PlayerGui then TargetGuiParent = PlayerGui end
 
--- Hapus UI lama jika duplikat
 if TargetGuiParent:FindFirstChild("RiooHub_ZoneEngine") then 
     TargetGuiParent.RiooHub_ZoneEngine:Destroy() 
 end
@@ -27,7 +27,6 @@ local MacroData = {}
 local autoReplayEnabled = false
 local autoSkipEnabled = false
 local autoVoteReadyEnabled = false
-local targetDifficulty = "Easy"
 
 local LastSelectedUnitUID = "ffc541d5-ef02-4a69-8045-6a3d97bda308"
 local TowerFolder = Workspace:FindFirstChild("Towers") or Workspace:FindFirstChild("Units") or Workspace:FindFirstChild("PlacedTowers") or Workspace
@@ -38,7 +37,7 @@ local function getSafeRemote(remoteName)
 end
 
 -- =========================================================================
--- INTERFACE LAYOUT (DIBUAT DULUAN AGAR PASTI MUNCUL)
+-- INTERFACE LAYOUT (POLOS & STABIL TANPA BULK SCRIPTS)
 -- =========================================================================
 local ScreenGui = Instance.new("ScreenGui", TargetGuiParent)
 ScreenGui.Name = "RiooHub_ZoneEngine"
@@ -103,7 +102,7 @@ local Subtitle = Instance.new("TextLabel", Topbar)
 Subtitle.Size = UDim2.new(0, 350, 0, 15)
 Subtitle.Position = UDim2.new(0, 15, 0, 26)
 Subtitle.BackgroundTransparency = 1
-Subtitle.Text = "Full AFK Automation (RiooHub V34)"
+Subtitle.Text = "Full AFK Automation (RiooHub V35 Stable)"
 Subtitle.TextColor3 = Color3.fromRGB(130, 115, 150)
 Subtitle.Font = Enum.Font.SourceSans
 Subtitle.TextSize = 12
@@ -148,7 +147,7 @@ LogScroll.ScrollBarImageColor3 = Color3.fromRGB(230, 100, 230)
 local StatusLog = Instance.new("TextLabel", LogScroll)
 StatusLog.Size = UDim2.new(1, 0, 1, 0)
 StatusLog.BackgroundTransparency = 1
-StatusLog.Text = "[SYSTEM]: RiooHub V34 Live. UI Loaded Successfully."
+StatusLog.Text = "[SYSTEM]: RiooHub V35 Active. Stable UI completely restored."
 StatusLog.TextColor3 = Color3.fromRGB(170, 150, 190)
 StatusLog.Font = Enum.Font.SourceSans
 StatusLog.TextSize = 12
@@ -216,25 +215,10 @@ local function createZoneToggle(text, pos, parent, callback)
 end
 
 -- =========================================================================
--- BACKEND SNIFFER LOGIC (DIPASANG DI BACKGROUND)
+-- LOGIKA DETEKSI AMAN (TANPA HOOK METATABLE)
 -- =========================================================================
 local placeConnection
-local isHookInstalled = false
-
-local function temukanPosisiTowerDariUID(uid)
-    for _, tower in pairs(TowerFolder:GetChildren()) do
-        if tower.Name == uid or (tower:FindFirstChild("UID") and tower.UID.Value == uid) or tower:GetAttribute("UID") == uid then
-            local p = tower.PrimaryPart or tower:FindFirstChildWhichIsA("BasePart")
-            if p then return p.Position end
-        end
-    end
-    local modelDirect = TowerFolder:FindFirstChild(uid)
-    if modelDirect then
-        local p = modelDirect.PrimaryPart or modelDirect:FindFirstChildWhichIsA("BasePart")
-        if p then return p.Position end
-    end
-    return nil
-end
+local uiConnections = {}
 
 local function temukanUIDTowerTerdekat(posRecord)
     local jarakTerdekat = math.huge
@@ -253,102 +237,72 @@ local function temukanUIDTowerTerdekat(posRecord)
     return uidTerpilih
 end
 
-local function AktifkanV34Engine()
+local function AmbilTowerAktifDariMouse()
+    local mouse = LocalPlayer:GetMouse()
+    local target = mouse.Target
+    if target and target:IsDescendantOf(TowerFolder) then
+        -- Cari model utama tower di Workspace
+        local obj = target
+        while obj and obj.Parent ~= TowerFolder do
+            obj = obj.Parent
+        end
+        return obj
+    end
+    return nil
+end
+
+local function AktifkanV35Engine()
+    -- TRACK PLACE TOWER VIA WORKSPACE (Aman & Stabil)
     if TowerFolder and not placeConnection then
         placeConnection = TowerFolder.ChildAdded:Connect(function(child)
             if not isRecording then return end
             task.wait(0.1)
-            local ownerCheck = child:FindFirstChild("Owner") or child:FindFirstChild("Player")
-            if ownerCheck and ownerCheck.Value ~= LocalPlayer.Name then return end
-            
             local primaryPart = child.PrimaryPart or child:FindFirstChildWhichIsA("BasePart")
             if primaryPart then
                 local currentDelay = os.clock() - StartTime
-                local towerUID = child.Name
-                local uidObj = child:FindFirstChild("UID") or child:FindFirstChild("Id")
-                if uidObj then towerUID = uidObj.Value end
-
                 table.insert(MacroData, {
                     Type = "Spawn",
                     Time = currentDelay,
                     X = primaryPart.Position.X,
                     Y = primaryPart.Position.Y,
                     Z = primaryPart.Position.Z,
-                    SavedUID = LastSelectedUnitUID,
-                    TowerUID = towerUID
+                    SavedUID = LastSelectedUnitUID
                 })
-                appendZoneLog("Place", "Placement logged successfully.")
+                appendZoneLog("Place", "Place recorded perfectly.")
             end
         end)
     end
 
-    -- DETEKSI UPGRADE DENGAN HOOK AMAN (ANTI CRASH UI)
-    if not isHookInstalled then
-        local upgradeRemote = getSafeRemote("UpgradeTower")
-        local hookSuccess, err = pcall(function()
-            local rawMeta = getrawmetatable or debug.getmetatable
-            if rawMeta then
-                local gMetatable = rawMeta(game)
-                if setreadonly then setreadonly(gMetatable, false) end
-                local originalNamecall = gMetatable.__namecall
+    -- TRACK UPGRADE VIA HOOK UI CLICK (100% Bebas Crash)
+    for _, gui in pairs(PlayerGui:GetDescendants()) do
+        if gui:IsA("TextButton") and (string.find(string.lower(gui.Name), "upgrade") or string.find(string.lower(gui.Text), "upgrade")) then
+            local conn = gui.MouseButton1Click:Connect(function()
+                if not isRecording then return end
+                task.wait(0.05)
                 
-                gMetatable.__namecall = newcclosure(function(self, ...)
-                    local method = getnamecallmethod()
-                    local args = {...}
-                    
-                    if isRecording and self == upgradeRemote and (method == "InvokeServer" or method == "FireServer") then
-                        local targetUID = args[1]
-                        if typeof(targetUID) == "string" then
-                            local posObj = temukanPosisiTowerDariUID(targetUID)
-                            if not posObj then
-                                local m = LocalPlayer:GetMouse()
-                                if m then posObj = m.Hit.Position end
-                            end
-
-                            if posObj then
-                                local currentDelay = os.clock() - StartTime
-                                table.insert(MacroData, {
-                                    Type = "Upgrade",
-                                    Time = currentDelay,
-                                    X = posObj.X,
-                                    Y = posObj.Y,
-                                    Z = posObj.Z
-                                })
-                                appendZoneLog("Upgrade", "Upgrade captured successfully!")
-                            end
-                        end
+                -- Cari tower mana yang lagi di-klik sama player di map
+                local activeTower = AmbilTowerAktifDariMouse()
+                if activeTower then
+                    local p = activeTower.PrimaryPart or activeTower:FindFirstChildWhichIsA("BasePart")
+                    if p then
+                        local currentDelay = os.clock() - StartTime
+                        table.insert(MacroData, {
+                            Type = "Upgrade",
+                            Time = currentDelay,
+                            X = p.Position.X,
+                            Y = p.Position.Y,
+                            Z = p.Position.Z
+                        })
+                        appendZoneLog("Upgrade", "Upgrade registered successfully via Click UI!")
                     end
-                    return originalNamecall(self, ...)
-                end)
-                isHookInstalled = true
-            end
-        end)
-        if not hookSuccess then
-            appendZoneLog("System", "Hook failed, using standard memory scanning instead.")
+                end
+            end)
+            table.insert(uiConnections, conn)
         end
     end
 end
 
--- TRACKER SLOT UNIT
-task.spawn(function()
-    while task.wait(0.3) do
-        pcall(function()
-            local dataFolder = ReplicatedStorage:FindFirstChild("Sessions") or ReplicatedStorage:FindFirstChild("PlayerData")
-            if dataFolder and dataFolder:FindFirstChild(LocalPlayer.Name) then
-                local equipped = dataFolder[LocalPlayer.Name]:FindFirstChild("Equipped") or dataFolder[LocalPlayer.Name]:FindFirstChild("Slots")
-                if equipped then
-                    for _, slot in pairs(equipped:GetChildren()) do
-                        if slot:IsA("StringValue") and slot.Value ~= "" then
-                            LastSelectedUnitUID = slot.Value
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end)
-
--- BUTTON FUNCTIONALITIES
+-- BUTTON CONTROLS
 local RecordBtn
 RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim2.new(1, -20, 0, 32), LeftBox, function()
     if not isRecording then
@@ -357,13 +311,16 @@ RecordBtn = createZoneButton("START MACRO RECORD", UDim2.new(0, 10, 0, 35), UDim
         isRecording = true
         RecordBtn.Text = "🛑 STOP RECORDING"
         RecordBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
-        appendZoneLog("System", "Recording started. Go place/upgrade towers.")
-        AktifkanV34Engine()
+        appendZoneLog("System", "Recording macro... Upgrade units now!")
+        AktifkanV35Engine()
     else
         isRecording = false
+        if placeConnection then placeConnection:Disconnect() end
+        for _, c in pairs(uiConnections) do c:Disconnect() end
+        uiConnections = {}
         RecordBtn.Text = "START MACRO RECORD"
         RecordBtn.TextColor3 = Color3.fromRGB(240, 240, 240)
-        appendZoneLog("System", string.format("Saved moves: %d", #MacroData))
+        appendZoneLog("System", string.format("Recorded %d actions.", #MacroData))
         if #MacroData > 0 and writefile then
             writefile(FILE_NAME, HttpService:JSONEncode(MacroData))
         end
@@ -382,7 +339,7 @@ createZoneButton("LOAD DATA FROM TEXT", UDim2.new(0, 10, 0, 75), UDim2.new(1, -2
 
 local function jalankanPlayback()
     if #MacroData == 0 then return end
-    appendZoneLog("Play", "Deploying matching playback...")
+    appendZoneLog("Play", "Deploying automation...")
     task.spawn(function()
         table.sort(MacroData, function(a, b) return a.Time < b.Time end)
         local playbackStart = os.clock()
@@ -411,19 +368,17 @@ local function jalankanPlayback()
                         end)
                         appendZoneLog("Upgrade", string.format("Upgraded unit %d.", index))
                     else
-                        appendZoneLog("Error", "Target tower UID not found for playback.")
+                        appendZoneLog("Error", "Tower UID target not found for upgrade.")
                     end
                 end
             end
         end
-        appendZoneLog("System", "Sequence finished.")
+        appendZoneLog("System", "AFK Automation Complete.")
     end)
 end
 createZoneButton("RUN AUTOMATION", UDim2.new(0, 10, 0, 115), UDim2.new(1, -20, 0, 32), LeftBox, jalankanPlayback)
 
--- TOGGLES (STUBBED TO PREVENT ERRORS)
-createZoneToggle("Force Game Speed x2", UDim2.new(0, 10, 0, 32), RightBox, function() end)
-createZoneToggle("Force Game Speed x3 (Pass)", UDim2.new(0, 10, 0, 60), RightBox, function() end)
-createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 88), RightBox, function(state) autoSkipEnabled = state end)
-createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 116), RightBox, function(state) autoVoteReadyEnabled = state end)
-createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 144), RightBox, function(state) autoReplayEnabled = state end)
+-- TOGGLES
+createZoneToggle("Auto Skip Waves", UDim2.new(0, 10, 0, 32), RightBox, function(state) autoSkipEnabled = state end)
+createZoneToggle("Auto Vote Easy + Ready", UDim2.new(0, 10, 0, 60), RightBox, function(state) autoVoteReadyEnabled = state end)
+createZoneToggle("Auto Play Again (Loop)", UDim2.new(0, 10, 0, 88), RightBox, function(state) autoReplayEnabled = state end)
