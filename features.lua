@@ -1,4 +1,4 @@
--- [[ NEXO HUB - CORE FEATURES FILE (V11.1 - SAFE HOOK) ]]
+-- [[ NEXO HUB - CORE FEATURES FILE (V11.2 - WRAPPER METHOD / NO HOOK) ]]
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
@@ -33,55 +33,45 @@ local function AddLog(text)
     end
 end
 
--- =======================================================
--- [[ SAFE HOOK ENGINE - DETOUR METHOD (ANTI-FREEZE) ]]
--- =======================================================
+-- Ambil file RemoteFunction Asli Game
 local EventsFolder = game:GetService("ReplicatedStorage"):WaitForChild("Events")
 local PlaceTowerRF = EventsFolder:WaitForChild("PlaceTower")
 local UpgradeTowerRF = EventsFolder:WaitForChild("UpgradeTower")
 local SellTowerRF = EventsFolder:WaitForChild("SellTower")
 
--- Trik Aman: Kita ambil fungsi asli InvokeServer bawaan Roblox
-local rawInvokeServer = Instance.new("RemoteFunction").InvokeServer
-
-local oldHook
-oldHook = hookfunction(rawInvokeServer, function(self, ...)
+-- =======================================================
+-- [[ WRAPPER ENGINE - MENANGKAP PERINTAH SECARA MANUAL ]]
+-- =======================================================
+local function RecordAction(typeOfAction, ...)
+    if not MacroData.IsRecording then return end
     local args = {...}
+    local timeDelay = tick() - MacroData.StartTime
     
-    -- Pastikan script tidak memproses apa-apa kalau sedang tidak merekam (Biar Ringan & Anti-Lag)
-    if MacroData.IsRecording then
-        local timeDelay = tick() - MacroData.StartTime
-        
-        if self == PlaceTowerRF then
-            table.insert(MacroData.Actions, {
-                Type = "Place",
-                Pos = {args[1].X, args[1].Y, args[1].Z},
-                ID = args[2],
-                Rot = args[3] or 0,
-                Delay = timeDelay
-            })
-            AddLog("[RECORD] Place Unit Terdeteksi!")
-            
-        elseif self == UpgradeTowerRF then
-            table.insert(MacroData.Actions, {
-                Type = "Upgrade",
-                TowerInstance = args[1],
-                Delay = timeDelay
-            })
-            AddLog("[RECORD] Upgrade Unit Terdeteksi!")
-            
-        elseif self == SellTowerRF then
-            table.insert(MacroData.Actions, {
-                Type = "Sell",
-                TowerInstance = args[1],
-                Delay = timeDelay
-            })
-            AddLog("[RECORD] Sell Unit Terdeteksi!")
-        end
+    if typeOfAction == "Place" then
+        table.insert(MacroData.Actions, {
+            Type = "Place",
+            Pos = {args[1].X, args[1].Y, args[1].Z},
+            ID = args[2],
+            Rot = args[3] or 0,
+            Delay = timeDelay
+        })
+        AddLog("[RECORD] Sukses merekam PLACE!")
+    elseif typeOfAction == "Upgrade" then
+        table.insert(MacroData.Actions, {
+            Type = "Upgrade",
+            TowerInstance = args[1],
+            Delay = timeDelay
+        })
+        AddLog("[RECORD] Sukses merekam UPGRADE!")
+    elseif typeOfAction == "Sell" then
+        table.insert(MacroData.Actions, {
+            Type = "Sell",
+            TowerInstance = args[1],
+            Delay = timeDelay
+        })
+        AddLog("[RECORD] Sukses merekam SELL!")
     end
-    
-    return oldHook(self, ...)
-end)
+end
 
 -- [[ LOGIKA MANAJEMEN MAKRO ]]
 _G.NexoHub_Features = {
@@ -105,7 +95,7 @@ _G.NexoHub_Features = {
         MacroData.IsRecording = true
         MacroData.StartTime = tick()
         MacroData.Actions = {}
-        AddLog("🔴 MEREKAM: Silakan taruh/upgrade unit di game...")
+        AddLog("🔴 MEREKAM: Silakan gunakan tombol bantuan UI di bawah!")
     end,
 
     StopRecord = function()
@@ -116,6 +106,28 @@ _G.NexoHub_Features = {
         local json = HttpService:JSONEncode(MacroData.Actions)
         writefile(filePath, json)
         AddLog(string.format("💾 Tersimpan %d aksi ke %s.json", #MacroData.Actions, MacroData.CurrentMacroName))
+    end,
+
+    -- TOMBOL MANUAL BANTUAN SAAT RECORDING (DI-CALL LEWAT BUTTON UI KAMU)
+    ManualRecordPlace = function(vector3Pos, towerID, rotation)
+        if not MacroData.IsRecording then return end
+        RecordAction("Place", vector3Pos, towerID, rotation)
+        -- Ikut menaruh di game aslinya biar sinkron
+        PlaceTowerRF:InvokeServer(vector3Pos, towerID, rotation)
+    end,
+    
+    ManualRecordUpgrade = function(towerInstanceID)
+        if not MacroData.IsRecording then return end
+        RecordAction("Upgrade", towerInstanceID)
+        -- Ikut upgrade di game aslinya
+        UpgradeTowerRF:InvokeServer(towerInstanceID)
+    end,
+    
+    ManualRecordSell = function(towerInstanceID)
+        if not MacroData.IsRecording then return end
+        RecordAction("Sell", towerInstanceID)
+        -- Ikut jual di game aslinya
+        SellTowerRF:InvokeServer(towerInstanceID)
     end,
 
     PlayMacro = function()
@@ -177,4 +189,4 @@ _G.NexoHub_Features = {
         end
     end
 }
-print("NexoHub Safe Hook System Active!")
+print("NexoHub Safe Wrapper Engine Active (No Hook)!")
