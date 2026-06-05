@@ -1,19 +1,11 @@
--- [[ NEXO HUB - MASTER INITIALIZER ]]
+-- [[ main.lua ]]
+-- Taruh link raw github/pastebin dari file ui.lua dan features.lua kamu di sini:
+local URL_UI = "https://raw.githubusercontent.com/RiooStore/NexoHub/main/ui.lua"
+local URL_FEATURES = "https://raw.githubusercontent.com/RiooStore/NexoHub/main/features.lua"
 
--- 1. Load File Fitur/Core Terlebih Dahulu
-local featureSuccess, featureError = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/RiooStore/NexoHub/main/features.lua"))()
-end)
+local UI_Module = loadstring(game:HttpGet(URL_UI))()
+local Features_Module = loadstring(game:HttpGet(URL_FEATURES))()
 
-if not featureSuccess then
-    warn("NexoHub Error: Gagal memuat file fitur! (" .. tostring(featureError) .. ")")
-end
-
--- 2. Jalankan File UI Setelah Fitur Selesai Dimuat
-local uiSuccess, uiError = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/RiooStore/NexoHub/main/ui.lua"))()
-end)
-
-if not uiSuccess then
-    warn("NexoHub Error: Gagal memuat file UI! (" .. tostring(uiError) .. ")")
-end
+-- Menyatukan UI asli dengan Fitur tanpa merusak kode
+local UI_Library = UI_Module.Create()
+Features_Module.Insert(UI_Library)
