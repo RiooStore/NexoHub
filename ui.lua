@@ -1,4 +1,4 @@
--- [[ NEXO HUB - PREMIUM UI MULTI-TAB & FARM MACRO (V11 REVISED) ]]
+-- [[ NEXO HUB - PREMIUM UI MULTI-TAB & FARM MACRO (V11 REVISED - FIXED) ]]
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -11,13 +11,30 @@ if CoreGui:FindFirstChild("NexoHubUI") then
     CoreGui.NexoHubUI:Destroy()
 end
 
+-- [[ FIXED ENVIRONMENT WRAPPER: Mencegah UI Stuck/Gagal Muncul ]]
+if not _G.NexoHub_Features then
+    _G.NexoHub_Features = {
+        SetWalkSpeed = function(val) print("Walkspeed set to:", val) end,
+        SetJumpPower = function(val) print("JumpPower set to:", val) end,
+        ResetStats = function() print("Stats reset") end,
+        EnableInfJump = function() print("InfJump Toggled") end,
+        SetMacroName = function(txt) print("Macro Name:", txt) end,
+        StartRecord = function() print("Recording started") end,
+        StopRecord = function() print("Recording stopped") end,
+        PlayMacro = function() print("Playback started") end,
+        StopMacro = function() print("Playback stopped") end,
+        DeleteMacro = function() print("Macro deleted") end,
+        SetAutoLoop = function(val) print("Loop set to:", val) end
+    }
+end
+
 local NexoHubUI = Instance.new("ScreenGui")
 NexoHubUI.Name = "NexoHubUI"
 NexoHubUI.Parent = CoreGui
 NexoHubUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- =======================================================
--- [[ 1. INTRO LOADING SCREEN (KEMBALI) ]]
+-- [[ 1. INTRO LOADING SCREEN ]]
 -- =======================================================
 local IntroFrame = Instance.new("Frame")
 IntroFrame.Name = "IntroFrame"
@@ -34,7 +51,7 @@ IntroTitle.Size = UDim2.new(0, 500, 0, 80)
 IntroTitle.Font = Enum.Font.GothamBold
 IntroTitle.Text = "NEXO HUB"
 IntroTitle.TextSize = 65
-IntroTitle.TextColor3 = Color3.fromRGB(0, 0, 0)
+IntroTitle.TextColor3 = Color3.fromRGB(255, 255, 255) -- Diubah ke putih agar terlihat solid di latar gelap
 IntroTitle.TextTransparency = 1
 
 local LoadingSpinner = Instance.new("ImageLabel")
@@ -43,11 +60,11 @@ LoadingSpinner.BackgroundTransparency = 1
 LoadingSpinner.Position = UDim2.new(0.5, -25, 0.55, 0)
 LoadingSpinner.Size = UDim2.new(0, 50, 0, 50)
 LoadingSpinner.Image = "rbxassetid://6031267431" 
-LoadingSpinner.ImageColor3 = Color3.fromRGB(0, 0, 0)
+LoadingSpinner.ImageColor3 = Color3.fromRGB(255, 255, 255)
 LoadingSpinner.ImageTransparency = 1
 
 -- =======================================================
--- [[ 2. MAIN MENU WINDOW (ORIGINAL DESIGN) ]]
+-- [[ 2. MAIN MENU WINDOW ]]
 -- =======================================================
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -68,7 +85,6 @@ MainStroke.Color = Color3.fromRGB(70, 70, 75)
 MainStroke.Transparency = 1 
 MainStroke.Parent = MainFrame
 
--- TOPBAR / HEADER (Seamless - Tanpa Garis Hitam)
 local HeaderZone = Instance.new("Frame")
 HeaderZone.Name = "HeaderZone"
 HeaderZone.Parent = MainFrame
@@ -125,7 +141,6 @@ MinimizeBtn.TextColor3 = Color3.fromRGB(220, 220, 225)
 MinimizeBtn.TextSize = 16
 MinimizeBtn.TextTransparency = 1
 
--- SIDEBAR MENU KIRI
 local Sidebar = Instance.new("Frame")
 Sidebar.Name = "Sidebar"
 Sidebar.Parent = MainFrame
@@ -150,7 +165,6 @@ TabLayout.Parent = TabContainer
 TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 TabLayout.Padding = UDim.new(0, 6)
 
--- SEKAT VERTIKAL TENGAH
 local VerticalDivider = Instance.new("Frame")
 VerticalDivider.Name = "VerticalDivider"
 VerticalDivider.Parent = MainFrame
@@ -160,7 +174,6 @@ VerticalDivider.Position = UDim2.new(0, 165, 0, 55)
 VerticalDivider.Size = UDim2.new(0, 1, 1, -55)
 VerticalDivider.BackgroundTransparency = 1
 
--- RESIZE BUTTON
 local ResizeBtn = Instance.new("ImageButton")
 ResizeBtn.Name = "ResizeBtn"
 ResizeBtn.Parent = MainFrame
@@ -172,7 +185,6 @@ ResizeBtn.ImageColor3 = Color3.fromRGB(140, 140, 145)
 ResizeBtn.ZIndex = 6
 ResizeBtn.ImageTransparency = 1
 
--- LOGO MINIMIZE "N"
 local LogoBtn = Instance.new("TextButton")
 LogoBtn.Name = "LogoBtn"
 LogoBtn.Parent = NexoHubUI
@@ -424,7 +436,6 @@ local T6 = CreateTab("🛠", "Utilities", "utils")
 -- =======================================================
 -- [[ CONTENT LAYOUT POPULATION ]]
 -- =======================================================
--- ISI TAB INFO & SETTINGS LAMA (Movement)
 local Cat1 = CreateCategory(InfoPage, "Movement")
 local R1, L1, B1, S1 = CreateFeatureRow(InfoPage, "WalkSpeed", "Set 100", function() if _G.NexoHub_Features then _G.NexoHub_Features.SetWalkSpeed(100) end end)
 local R2, L2, B2, S2 = CreateFeatureRow(InfoPage, "JumpPower", "Set 120", function() if _G.NexoHub_Features then _G.NexoHub_Features.SetJumpPower(120) end end)
@@ -433,7 +444,6 @@ local R3, L3, B3, S3 = CreateFeatureRow(InfoPage, "Reset Speed & Jump", "Reset",
 local Cat2 = CreateCategory(InfoPage, "Modes")
 local R4, L4, B4, S4 = CreateFeatureRow(InfoPage, "Infinite Jump", "Enable", function() if _G.NexoHub_Features then _G.NexoHub_Features.EnableInfJump() end end)
 
--- ISI TAB FARM MENU (FITUR RECORD MAKRO REKUESAN BARU)
 local CatFarm1 = CreateCategory(FarmPage, "Macro Recorder Engine")
 
 local RF1, LF1, IF1, SF1 = CreateTextBoxRow(FarmPage, "Nama File Makro", "MAKRO_V1", function(txt)
@@ -460,7 +470,6 @@ local RF6, LF6, BF6, SF6 = CreateFeatureRow(FarmPage, "Hapus File Makro", "DELET
     if _G.NexoHub_Features then _G.NexoHub_Features.DeleteMacro() end
 end)
 
--- Toggle Auto Loop Row
 local RF7, LF7, BF7, SF7 = CreateFeatureRow(FarmPage, "Putar Otomatis (Loop)", "LOOP: OFF", function() end)
 BF7.BackgroundColor3 = Color3.fromRGB(150, 40, 40)
 local isLooping = false
@@ -471,7 +480,6 @@ BF7.MouseButton1Click:Connect(function()
     if _G.NexoHub_Features then _G.NexoHub_Features.SetAutoLoop(isLooping) end
 end)
 
--- REAL-TIME CONSOLE LOG DI BAGIAN BAWAH FARM
 local CatFarm2 = CreateCategory(FarmPage, "Macro Console Monitoring Log")
 local LogContainer = Instance.new("Frame")
 LogContainer.Parent = FarmPage
@@ -503,7 +511,6 @@ _G.NexoHub_AddLogUI = function(msg)
     LogText.Text = table.concat(lines, "\n")
 end
 
--- Default halaman aktif awal
 SwitchToTab("info")
 
 -- =======================================================
