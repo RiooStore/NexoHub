@@ -1,4 +1,4 @@
--- [[ NEXO HUB - CORE FEATURES FILE (V11 - HOOK VERSION) ]]
+-- [[ NEXO HUB - CORE FEATURES FILE (V11.1 - SAFE HOOK) ]]
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local HttpService = game:GetService("HttpService")
@@ -34,69 +34,54 @@ local function AddLog(text)
 end
 
 -- =======================================================
--- [[ HOOKING ENGINE - DETEKSI OTOMATIS REMOTEFUNCTION ]]
+-- [[ SAFE HOOK ENGINE - DETOUR METHOD (ANTI-FREEZE) ]]
 -- =======================================================
 local EventsFolder = game:GetService("ReplicatedStorage"):WaitForChild("Events")
 local PlaceTowerRF = EventsFolder:WaitForChild("PlaceTower")
 local UpgradeTowerRF = EventsFolder:WaitForChild("UpgradeTower")
 local SellTowerRF = EventsFolder:WaitForChild("SellTower")
 
--- Hook PlaceTower
-local oldPlace = hookmetamethod(PlaceTowerRF, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
+-- Trik Aman: Kita ambil fungsi asli InvokeServer bawaan Roblox
+local rawInvokeServer = Instance.new("RemoteFunction").InvokeServer
+
+local oldHook
+oldHook = hookfunction(rawInvokeServer, function(self, ...)
     local args = {...}
     
-    if self == PlaceTowerRF and method == "InvokeServer" and MacroData.IsRecording then
+    -- Pastikan script tidak memproses apa-apa kalau sedang tidak merekam (Biar Ringan & Anti-Lag)
+    if MacroData.IsRecording then
         local timeDelay = tick() - MacroData.StartTime
-        -- args[1] = Vector3, args[2] = Tower ID/Name, args[3] = Rotation
-        table.insert(MacroData.Actions, {
-            Type = "Place",
-            Pos = {args[1].X, args[1].Y, args[1].Z},
-            ID = args[2],
-            Rot = args[3] or 0,
-            Delay = timeDelay
-        })
-        AddLog(string.format("[PLACE] ID: %s", string.sub(tostring(args[2]), 1, 8) .. "..."))
+        
+        if self == PlaceTowerRF then
+            table.insert(MacroData.Actions, {
+                Type = "Place",
+                Pos = {args[1].X, args[1].Y, args[1].Z},
+                ID = args[2],
+                Rot = args[3] or 0,
+                Delay = timeDelay
+            })
+            AddLog("[RECORD] Place Unit Terdeteksi!")
+            
+        elseif self == UpgradeTowerRF then
+            table.insert(MacroData.Actions, {
+                Type = "Upgrade",
+                TowerInstance = args[1],
+                Delay = timeDelay
+            })
+            AddLog("[RECORD] Upgrade Unit Terdeteksi!")
+            
+        elseif self == SellTowerRF then
+            table.insert(MacroData.Actions, {
+                Type = "Sell",
+                TowerInstance = args[1],
+                Delay = timeDelay
+            })
+            AddLog("[RECORD] Sell Unit Terdeteksi!")
+        end
     end
-    return oldPlace(self, ...)
-end)
-
--- Hook UpgradeTower
-local oldUpgrade = hookmetamethod(UpgradeTowerRF, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
     
-    if self == UpgradeTowerRF and method == "InvokeServer" and MacroData.IsRecording then
-        local timeDelay = tick() - MacroData.StartTime
-        -- args[1] = Unique Instance ID dari tower yang di-upgrade
-        table.insert(MacroData.Actions, {
-            Type = "Upgrade",
-            TowerInstance = args[1],
-            Delay = timeDelay
-        })
-        AddLog("[UPGRADE] Unit berhasil direkam")
-    end
-    return oldUpgrade(self, ...)
+    return oldHook(self, ...)
 end)
-
--- Hook SellTower
-local oldSell = hookmetamethod(SellTowerRF, "__namecall", function(self, ...)
-    local method = getnamecallmethod()
-    local args = {...}
-    
-    if self == SellTowerRF and method == "InvokeServer" and MacroData.IsRecording then
-        local timeDelay = tick() - MacroData.StartTime
-        -- args[1] = Unique Instance ID dari tower yang dijual
-        table.insert(MacroData.Actions, {
-            Type = "Sell",
-            TowerInstance = args[1],
-            Delay = timeDelay
-        })
-        AddLog("[SELL] Unit berhasil direkam")
-    end
-    return oldSell(self, ...)
-end)
-
 
 -- [[ LOGIKA MANAJEMEN MAKRO ]]
 _G.NexoHub_Features = {
@@ -120,7 +105,7 @@ _G.NexoHub_Features = {
         MacroData.IsRecording = true
         MacroData.StartTime = tick()
         MacroData.Actions = {}
-        AddLog("🔴 MEREKAM AKSI: Jalankan game seperti biasa...")
+        AddLog("🔴 MEREKAM: Silakan taruh/upgrade unit di game...")
     end,
 
     StopRecord = function()
@@ -130,7 +115,7 @@ _G.NexoHub_Features = {
         local filePath = "NexoHub/Macros/" .. MacroData.CurrentMacroName .. ".json"
         local json = HttpService:JSONEncode(MacroData.Actions)
         writefile(filePath, json)
-        AddLog(string.format("💾 Berhasil menyimpan %d aksi ke %s.json", #MacroData.Actions, MacroData.CurrentMacroName))
+        AddLog(string.format("💾 Tersimpan %d aksi ke %s.json", #MacroData.Actions, MacroData.CurrentMacroName))
     end,
 
     PlayMacro = function()
@@ -149,12 +134,10 @@ _G.NexoHub_Features = {
                 for _, act in ipairs(actions) do
                     if not MacroData.IsPlaying then break end
                     
-                    -- Kalkulasi jeda waktu asli antar aksi
                     local waitTime = act.Delay - currentDelay
                     if waitTime > 0 then task.wait(waitTime) end
                     currentDelay = act.Delay
                     
-                    -- Eksekusi berdasarkan tipe aksi yang terekam
                     pcall(function()
                         if act.Type == "Place" then
                             local posVector = Vector3.new(act.Pos[1], act.Pos[2], act.Pos[3])
@@ -194,4 +177,4 @@ _G.NexoHub_Features = {
         end
     end
 }
-print("NexoHub Core Feature V11 Hook System Active!")
+print("NexoHub Safe Hook System Active!")
